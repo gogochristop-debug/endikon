@@ -4,7 +4,7 @@ A bilingual Greek/English legal services frontend prototype built with Next.js 1
 
 ## Development
 
-Use Node.js 20.9+ (validated on Node 24) and npm. From this existing checkout:
+Use Node.js 22+ (validated on Node 24.19.0) and npm. From this existing checkout:
 
 ```sh
 npm ci
@@ -45,3 +45,46 @@ The environment already provides an isolated checkout; do not create a worktree 
 Lint, TypeScript and production build pass. `npm run smoke` (with the app running) checks 44 localized routes, HTML language, headings, demo noindex metadata, absence of file inputs, unknown route 404s and the Greek default redirect.
 
 A headless Chromium walkthrough also verified EL/EN switching with quote selection preserved, service preselection, form acknowledgement, disabled upload preview, admin search and actions, mobile menu, mobile overflow and absence of browser errors or mutation requests. Screenshots were inspected at desktop and mobile widths. Authentication and production integrations are intentionally unimplemented.
+
+## Cloudflare Workers (OpenNext)
+
+This targets **Cloudflare Workers**, not Pages or a static export. Dynamic App Router routes, locale switching, query parameters and demo dashboards run through the Worker. `next.config.ts` enables local Cloudflare bindings; `open-next.config.ts` uses the supported default adapter. Website code and behavior are unchanged.
+
+Versions are locked: Next.js / eslint-config-next **16.3.8**, `@opennextjs/cloudflare` **1.20.10**, Wrangler **4.149.0**. Next.js is deliberately pinned: 16.4.0 built successfully with this adapter but failed in workerd on `Unexpected loadManifest(/.next/server/preview-props.json) call!`. The pinned combination passes all 44 routes in workerd. Revalidate the Worker runtime before upgrading Next.js or the adapter.
+
+From the repository root, install with `npm ci` (include development dependencies). For a Cloudflare Workers Builds Git integration, use:
+
+| Setting | Value |
+| --- | --- |
+| Build command | `npm run build:cloudflare` |
+| Deploy command | `npm run deploy:cloudflare` |
+| Root directory | Repository root |
+| Node version | 24.19.0 recommended, 22+ required; set `NODE_VERSION=24.19.0` if the build platform needs an override |
+
+The build command runs the ordinary Next.js production build and adapts it into `.open-next/worker.js` and `.open-next/assets`. The deploy command uploads that existing output. **Deployment has not been run.** Do not execute the deploy command until deployment is authorized. No custom domain or route is configured.
+
+`wrangler.jsonc` declares:
+
+- Worker name `endikon` and entry point `.open-next/worker.js`.
+- Compatibility date **2026-10-09**, with **`nodejs_compat`** and **`global_fetch_strictly_public`**. OpenNext requires Node compatibility; retain this tested date and flags together.
+- Static assets binding **`ASSETS`** for `.open-next/assets`.
+- Self-reference service binding **`WORKER_SELF_REFERENCE`**, with service name `endikon`. If renaming the Worker, change both names together.
+
+Phase 1 needs no application environment variables, Supabase credentials, R2 bucket, KV namespace, database, image binding or external service. No cache persistence is required by its current dynamic/demo routes. For eventual deployment from external CI, supply `CLOUDFLARE_API_TOKEN` (scoped Workers deployment permissions) and `CLOUDFLARE_ACCOUNT_ID` securely; neither is needed for local build/preview, and neither belongs in `.env.example` or Git. Cloudflare's native Git build integration supplies deployment authentication through its platform.
+
+Local validation without publishing:
+
+```sh
+npm run typegen:cloudflare
+npm run lint
+npm run typecheck
+npm run build:cloudflare
+npm run check:cloudflare       # Wrangler deploy --dry-run; does not deploy
+npm run preview:cloudflare -- --port 8787
+# In another terminal:
+npm run smoke:cloudflare
+```
+
+Generated runtime types, `.open-next`, `.wrangler` and `.dev.vars*` are ignored. Regenerate types after changing bindings. On a sandbox where the home configuration directory is read-only, prefix Wrangler/OpenNext commands with `XDG_CONFIG_HOME=/tmp/endikon-config WRANGLER_LOG_PATH=/tmp/endikon-wrangler.log`; these are local tooling overrides, not production application requirements.
+
+Validated: lint, TypeScript, Next.js production build, OpenNext build, Wrangler binding type generation, dry-run bundle checks and all 44 localized routes under local workerd. Smoke checks also exercise redirects, 404s, static CSS/JS assets, favicon and quote query preselection. Local preview may warn that `Request.cf` metadata could not be fetched behind a restricted proxy; it uses placeholder metadata, and the application does not depend on it. A Chromium walkthrough also verified client-side navigation/hydration, locale switching, service-to-quote selection, form previews, admin search and mobile navigation on workerd without browser or server errors. No live Cloudflare deployment or custom domain has been tested or configured.
