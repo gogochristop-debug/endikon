@@ -8,22 +8,33 @@
     "start": "next start --hostname 0.0.0.0",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "smoke": "node scripts/smoke.mjs"
+    "smoke": "node scripts/smoke.mjs",
+    "build:cloudflare": "opennextjs-cloudflare build",
+    "preview:cloudflare": "opennextjs-cloudflare preview",
+    "deploy:cloudflare": "opennextjs-cloudflare deploy",
+    "check:cloudflare": "wrangler deploy --dry-run",
+    "typegen:cloudflare": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
+    "smoke:cloudflare": "SMOKE_BASE_URL=http://localhost:8787 node scripts/smoke.mjs"
   },
   "dependencies": {
-    "next": "^16.2.0",
+    "lucide-react": "^0.468.0",
+    "next": "16.3.8",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0",
-    "lucide-react": "^0.468.0"
+    "react-dom": "^19.2.0"
   },
   "devDependencies": {
-    "typescript": "^5.9.0",
+    "@opennextjs/cloudflare": "1.20.10",
+    "@tailwindcss/postcss": "^4.0.0",
     "@types/node": "^22.0.0",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
-    "tailwindcss": "^4.0.0",
-    "@tailwindcss/postcss": "^4.0.0",
     "eslint": "^9.0.0",
-    "eslint-config-next": "^16.2.0"
+    "eslint-config-next": "16.3.8",
+    "tailwindcss": "^4.0.0",
+    "typescript": "^5.9.0",
+    "wrangler": "4.149.0"
+  },
+  "engines": {
+    "node": ">=22.0.0"
   }
 }
