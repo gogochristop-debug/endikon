@@ -57,7 +57,7 @@ export async function changeQuoteStatusForAuthorizedAdmin(
 ): Promise<"updated" | "unchanged"> {
   if (!/^[a-zA-Z0-9_-]{1,100}$/.test(input.quoteId) ||
       !isQuoteStatus(input.fromStatus) || !isQuoteStatus(input.toStatus) ||
-      !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(input.actorId) ||
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.actorId) ||
       input.actorId.length > 150) throw new Error("Invalid status update");
   if (input.fromStatus === input.toStatus) return "unchanged";
   const eventId = crypto.randomUUID();
