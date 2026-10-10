@@ -125,7 +125,7 @@ export function Website({
       className="form-card"
       onSubmit={(e) => {
         e.preventDefault();
-        setNotice(t.success);
+        setNotice(lang === "el" ? "Η φόρμα βρίσκεται ακόμη σε δοκιμαστική λειτουργία. Τα στοιχεία δεν αποθηκεύτηκαν και το αίτημα δεν στάλθηκε. Παρακαλούμε μη χρησιμοποιείτε πραγματικά προσωπικά δεδομένα." : "This form is still a demonstration. Your information was not saved and your request was not sent. Please do not enter real personal information.");
       }}
     >
       <h2>{contact ? t.contactTitle : t.requestTitle}</h2>
@@ -177,7 +177,7 @@ export function Website({
         {t.consent}
       </label>
       <button className="button" type="submit">
-        {t.submit}
+        {lang === "el" ? "Δοκιμή φόρμας" : "Preview form"}
         <ArrowRight size={17} />
       </button>
       {notice && (
