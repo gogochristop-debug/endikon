@@ -39,6 +39,7 @@ export function isQuoteStatus(value: unknown): value is QuoteStatus {
 
 type MutationStatement = {
   bind(...values: unknown[]): MutationStatement;
+  first<T>(): Promise<T | null>;
 };
 type MutationDatabase = { prepare(sql: string): MutationStatement; batch(statements: MutationStatement[]): Promise<unknown> };
 
@@ -70,5 +71,6 @@ export async function changeQuoteStatusForAuthorizedAdmin(
       "INSERT INTO quote_status_events (id, quote_request_id, from_status, to_status, actor_id) SELECT ?, ?, ?, ?, ? WHERE changes() = 1"
     ).bind(eventId, input.quoteId, input.fromStatus, input.toStatus, input.actorId),
   ]);
-  return "updated";
+  const event = await db.prepare("SELECT id FROM quote_status_events WHERE id = ?").bind(eventId).first<{ id: string }>();
+  return event ? "updated" : "unchanged";
 }
