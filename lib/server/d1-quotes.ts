@@ -74,3 +74,31 @@ export async function changeQuoteStatusForAuthorizedAdmin(
   const event = await db.prepare("SELECT id FROM quote_status_events WHERE id = ?").bind(eventId).first<{ id: string }>();
   return event ? "updated" : "unchanged";
 }
+
+/** Bounded, parameterized search; call only after verified admin authorization. */
+export async function searchQuotesForAuthorizedAdmin(
+  db: Database,
+  filters: { status?: QuoteStatus; query?: string; limit?: number } = {},
+): Promise<QuoteRow[]> {
+  const limit = filters.limit ?? 25;
+  if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw new Error("Invalid limit");
+  if (filters.status !== undefined && !isQuoteStatus(filters.status)) throw new Error("Invalid status");
+  const query = filters.query?.trim() ?? "";
+  if (query.length > 100) throw new Error("Search too long");
+  const clauses = ["deleted_at IS NULL"];
+  const bindings: unknown[] = [];
+  if (filters.status) {
+    clauses.push("status = ?");
+    bindings.push(filters.status);
+  }
+  if (query) {
+    // Treat LIKE wildcard characters literally.
+    const escaped = query.replace(/[\\%_]/g, "\\$&");
+    clauses.push("(name LIKE ? ESCAPE '\\' OR email LIKE ? ESCAPE '\\' OR service LIKE ? ESCAPE '\\')");
+    bindings.push(...Array(3).fill("%" + escaped + "%"));
+  }
+  const sql = "SELECT id, created_at, name, email, service, status FROM quote_requests WHERE " +
+    clauses.join(" AND ") + " ORDER BY created_at DESC, id DESC LIMIT ?";
+  const { results } = await db.prepare(sql).bind(...bindings, limit).all<QuoteRow>();
+  return results;
+}
