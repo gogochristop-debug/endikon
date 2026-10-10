@@ -39,37 +39,36 @@ export function isQuoteStatus(value: unknown): value is QuoteStatus {
 
 type MutationStatement = {
   bind(...values: unknown[]): MutationStatement;
-  run(): Promise<{ meta: { changes: number } }>;
-  first<T>(): Promise<T | null>;
 };
 type MutationDatabase = { prepare(sql: string): MutationStatement; batch(statements: MutationStatement[]): Promise<unknown> };
 
 /**
- * Call only AFTER a verified administrator identity.
- * The update and audit event execute in one D1 batch transaction.
- * This helper is not exposed until concurrent-update safeguards and API tests pass.
+ * Safe server-side status update: an UPDATE guarded by the expected prior status,
+ * followed by an audit event. This helper must only be invoked after verified admin
+ * authorization and request-origin/CSRF checks in a future API route.
+ *
+ * D1 batch is transactional; conditional event insertion only records successful
+ * updates. A stale request does not overwrite another administrator's change.
  */
 export async function changeQuoteStatusForAuthorizedAdmin(
   db: MutationDatabase,
   input: { quoteId: string; fromStatus: QuoteStatus; toStatus: QuoteStatus; actorId: string },
-): Promise<"updated" | "not_found" | "unchanged"> {
+): Promise<"updated" | "unchanged"> {
   if (!/^[a-zA-Z0-9_-]{1,100}$/.test(input.quoteId) ||
       !isQuoteStatus(input.fromStatus) || !isQuoteStatus(input.toStatus) ||
-      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.actorId) ||
+      !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(input.actorId) ||
       input.actorId.length > 150) throw new Error("Invalid status update");
   if (input.fromStatus === input.toStatus) return "unchanged";
-  const existing = await db.prepare(
-    "SELECT id, status FROM quote_requests WHERE id = ? AND deleted_at IS NULL"
-  ).bind(input.quoteId).first<{ id: string; status: string }>();
-  if (!existing || existing.status !== input.fromStatus) return "not_found";
-  // D1 batch statements execute transactionally, rolling back on error.
+  const eventId = crypto.randomUUID();
+  // SQLite changes() observes the immediately preceding UPDATE within the same
+  // D1 batch transaction; the audit insert is skipped when the UPDATE changed 0 rows.
   await db.batch([
     db.prepare(
       "UPDATE quote_requests SET status = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ? AND status = ? AND deleted_at IS NULL"
     ).bind(input.toStatus, input.quoteId, input.fromStatus),
     db.prepare(
-      "INSERT INTO quote_status_events (id, quote_request_id, from_status, to_status, actor_id) VALUES (?, ?, ?, ?, ?)"
-    ).bind(crypto.randomUUID(), input.quoteId, input.fromStatus, input.toStatus, input.actorId),
+      "INSERT INTO quote_status_events (id, quote_request_id, from_status, to_status, actor_id) SELECT ?, ?, ?, ?, ? WHERE changes() = 1"
+    ).bind(eventId, input.quoteId, input.fromStatus, input.toStatus, input.actorId),
   ]);
   return "updated";
 }
