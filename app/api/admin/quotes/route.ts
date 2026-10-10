@@ -1,6 +1,6 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { verifyAdminAccess } from "@/lib/server/access-auth";
-import { listQuotesForAuthorizedAdmin } from "@/lib/server/d1-quotes";
+import { isQuoteStatus, searchQuotesForAuthorizedAdmin } from "@/lib/server/d1-quotes";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -31,7 +31,17 @@ export async function GET(request: Request): Promise<Response> {
     });
     if (!authorized) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers });
     if (!settings.DB) return new Response(JSON.stringify({ error: "Database unavailable" }), { status: 503, headers });
-    const quotes = await listQuotesForAuthorizedAdmin(settings.DB, 25);
+    const params = new URL(request.url).searchParams;
+    const status = params.get("status");
+    const query = params.get("q") ?? "";
+    if ((status !== null && !isQuoteStatus(status)) || query.length > 100) {
+      return new Response(JSON.stringify({ error: "Invalid filters" }), { status: 400, headers });
+    }
+    const quotes = await searchQuotesForAuthorizedAdmin(settings.DB, {
+      status: status && isQuoteStatus(status) ? status : undefined,
+      query,
+      limit: 25,
+    });
     return new Response(JSON.stringify({ quotes }), { status: 200, headers });
   } catch {
     return new Response(JSON.stringify({ error: "Service unavailable" }), { status: 503, headers });
