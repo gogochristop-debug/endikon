@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ArrowUpRight,
   ArrowRight,
@@ -35,6 +35,31 @@ export function Website({
   route: string;
   initialService?: string;
 }) {
+  useEffect(() => {
+    if (
+      !("IntersectionObserver" in window) ||
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      return;
+    }
+
+    const elements = document.querySelectorAll(
+      ".hero-content, .hero-art, .section-heading, .service-card, .process .process-grid > div, .cta",
+    );
+    const observer = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue;
+        entry.target.classList.add("reveal-enter");
+        observer.unobserve(entry.target);
+      }
+    }, { threshold: 0.12 });
+    elements.forEach((element) => observer.observe(element));
+    return () => {
+      observer.disconnect();
+      elements.forEach((element) => element.classList.remove("reveal-enter"));
+    };
+  }, [lang, route]);
+
   const t = copy[lang];
   const [menu, setMenu] = useState(false);
   const [notice, setNotice] = useState("");
