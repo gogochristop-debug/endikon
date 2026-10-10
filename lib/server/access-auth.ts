@@ -41,7 +41,7 @@ export async function verifyAdminAccess(
     const jwk = certs.keys?.find(k => k.kid === header.kid && k.kty === "RSA");
     if (!jwk) return false;
     const key = await crypto.subtle.importKey("jwk", jwk, { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" }, false, ["verify"]);
-    const signature = decodeBase64Url(parts[2]);
+    const signature = Uint8Array.from(decodeBase64Url(parts[2]));
     const data = new TextEncoder().encode(parts[0] + "." + parts[1]);
     return crypto.subtle.verify("RSASSA-PKCS1-v1_5", key, signature, data);
   } catch {
