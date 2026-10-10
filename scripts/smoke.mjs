@@ -54,7 +54,8 @@ for (const asset of assets) {
   assert.equal(response.status, 200, `Asset ${asset}`);
   assert.ok(!response.headers.get("content-type")?.includes("text/html"), "Asset is not an HTML fallback");
 }
-assert.equal((await fetch(`${base}/icon.svg`)).status, 200);
+assert.equal((await fetch(`${base}/icon.png`)).status, 200);
+assert.equal((await fetch(`${base}/apple-icon.png`)).status, 200);
 const quote = await (await fetch(`${base}/en/quote?service=immigration`)).text();
 assert.match(quote, /<option[^>]*value="immigration"[^>]*selected/, "Quote query selection");
 console.log(

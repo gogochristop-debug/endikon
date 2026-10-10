@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import {
   ArrowUpRight,
@@ -181,11 +182,16 @@ export function Website({
       </a>
       <header className="header">
         <div className="header-inner">
-          <Link href={href()} className="brand" aria-label="ENDIKON home">
-            <span className="brand-symbol">
-              E<span />
-            </span>
-            ENDIKON<span className="brand-dot">.</span>
+          <Link href={href()} className="brand header-brand">
+            <Image
+              src="/brand/endikon-logo-transparent.png"
+              alt={lang === "el" ? "ENDIKON — Αρχική σελίδα" : "ENDIKON — Home"}
+              width={2086}
+              height={705}
+              sizes="(max-width: 480px) 164px, (max-width: 1200px) 210px, 240px"
+              preload
+              className="header-logo"
+            />
           </Link>
           <nav
             className={menu ? "nav open" : "nav"}
