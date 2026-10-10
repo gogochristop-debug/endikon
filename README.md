@@ -96,3 +96,11 @@ The shared stylesheet uses the same rem scale for Greek and English: 18–19px r
 Navigation switches to the existing menu at 1200px to accommodate longer Greek labels. Dashboard statistics stack below 1000px; dashboard tables and mobile sidebar navigation scroll within their containers. Mobile headings, wrapping, and flexible grid children keep narrow screens and enlarged text usable.
 
 Validated on the production build with headless Chromium: all 44 localized routes at 320, 375, 768, 1024, 1200, 1280 and 1440px (308 checks), minimum text sizes, viewport overflow, desktop header overlap, mobile navigation, quote selection through locale switching, form feedback, admin search/actions, upload preview, and 200% text enlargement on representative Greek home/form/portal/admin pages. Screenshots reviewed at mobile, tablet and desktop widths. Lint, typecheck, and route smoke checks pass. In the managed environment, the default Turbopack build could not bind its CSS compiler port; `npm run build -- --webpack` passed using Next.js's supported webpack compiler.
+
+## Editorial design refinements
+
+Hero spacing and the original abstract arch now use finer framing and restrained depth. Service cards have aligned icon frames, consistent desktop/tablet heights, clearer link separation, and subtle hover/focus treatments. The process section has tighter spacing and one continuous connector that becomes vertical on mobile. Existing brand colors, content, typography scale, routes and demo behavior are preserved; no dependencies were added.
+
+Scroll entrances use a one-shot `IntersectionObserver` and animate only opacity/transform. Content remains visible before hydration, without JavaScript, and when the observer is unavailable. Reduced-motion preferences suppress entrance animations and hover movement. Cleanup disconnects observers on route/locale changes.
+
+Validation: lint, typecheck, webpack production build, all 44 localized route smoke tests and 308 responsive route/viewport checks pass. Chromium additionally verifies scroll entrances, equal desktop/tablet card heights, keyboard card links/focus, reduced-motion behavior, visible content fallbacks and layout-shift score below 0.01 in Greek and English at 375, 768 and 1440px. Screenshots reviewed at mobile, tablet and desktop widths; representative solid-surface text contrast checks pass.
