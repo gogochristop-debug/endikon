@@ -8,6 +8,13 @@
     "binding": "ASSETS",
     "directory": ".open-next/assets"
   },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "endikon-dev",
+      "database_id": "cdf95f72-43fa-4d9d-bbfe-8b73ec3a3011"
+    }
+  ],
   "services": [
     {
       "binding": "WORKER_SELF_REFERENCE",
