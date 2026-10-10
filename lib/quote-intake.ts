@@ -20,18 +20,9 @@ export type QuoteValidationResult =
   | { ok: false; error: "invalid_request" };
 
 const emailPattern = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;
-const validServices = new Set([
-  "debt-settlement",
-  "immigration",
-  "property",
-  "family",
-  "business",
-  "other",
-]);
-
 export function validateQuoteRequest(
   input: unknown,
-  allowedServices: ReadonlySet<string> = validServices,
+  allowedServices: ReadonlySet<string>,
 ): QuoteValidationResult {
   if (!input || typeof input !== "object" || Array.isArray(input))
     return { ok: false, error: "invalid_request" };
