@@ -1527,3 +1527,22 @@ input::placeholder, textarea::placeholder {
   .service-card:hover .text-link svg, .button:hover svg,
   .header-quote:hover svg { transform: none; }
 }
+
+/* Mobile-only navigation actions; desktop actions remain unchanged. */
+.mobile-nav-extra { display: none !important; }
+@media (max-width: 1200px) {
+  .nav.open .mobile-nav-extra {
+    display: flex !important;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    min-height: 48px;
+  }
+  .nav.open .mobile-nav-portal { border-top: 1px solid var(--line); padding-top: 14px; }
+  .nav.open .mobile-nav-quote {
+    justify-content: space-between;
+    background: var(--teal);
+    color: white;
+    padding: 10px 16px;
+  }
+}

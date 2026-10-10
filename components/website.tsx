@@ -223,6 +223,22 @@ export function Website({
                 {n}
               </Link>
             ))}
+            <Link
+              className="mobile-nav-extra mobile-nav-portal"
+              onClick={() => setMenu(false)}
+              href={href("login")}
+            >
+              <Users size={18} aria-hidden="true" />
+              {t.login}
+            </Link>
+            <Link
+              className="mobile-nav-extra mobile-nav-quote"
+              onClick={() => setMenu(false)}
+              href={href("quote")}
+            >
+              {t.quote}
+              <ArrowUpRight size={17} aria-hidden="true" />
+            </Link>
           </nav>
           <div className="header-actions">
             <div className="language">
