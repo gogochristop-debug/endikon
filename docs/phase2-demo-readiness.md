@@ -6,7 +6,7 @@ This PR adds **no public API, form submission, or admin endpoint**. Real persona
 
 1. Confirm the target is **endikon-dev** (never a production database).
 2. Verify the schema exists: `SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name;`.
-3. Optionally execute `migrations/0002_demo_seed.sql` in the **development** D1 console only. Entries use reserved `example.invalid` domains and fabricated names.
+3. Optionally execute `scripts/dev-seed/0002_demo_seed.sql` in the **development** D1 console only. Entries use reserved `example.invalid` domains and fabricated names.
 4. Verify the demo rows: `SELECT id, status FROM quote_requests WHERE id LIKE 'demo-quote-%';`.
 
 ## Security gate before UI/API integration
