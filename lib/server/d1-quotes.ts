@@ -29,3 +29,76 @@ export async function listQuotesForAuthorizedAdmin(
   ).bind(limit).all<QuoteRow>();
   return results;
 }
+
+export const QUOTE_STATUSES = ["received", "review", "awaiting_client", "quoted", "closed"] as const;
+export type QuoteStatus = (typeof QUOTE_STATUSES)[number];
+
+export function isQuoteStatus(value: unknown): value is QuoteStatus {
+  return typeof value === "string" && QUOTE_STATUSES.some(status => status === value);
+}
+
+type MutationStatement = {
+  bind(...values: unknown[]): MutationStatement;
+  first<T>(): Promise<T | null>;
+};
+type MutationDatabase = { prepare(sql: string): MutationStatement; batch(statements: MutationStatement[]): Promise<unknown> };
+
+/**
+ * Safe server-side status update: an UPDATE guarded by the expected prior status,
+ * followed by an audit event. This helper must only be invoked after verified admin
+ * authorization and request-origin/CSRF checks in a future API route.
+ *
+ * D1 batch is transactional; conditional event insertion only records successful
+ * updates. A stale request does not overwrite another administrator's change.
+ */
+export async function changeQuoteStatusForAuthorizedAdmin(
+  db: MutationDatabase,
+  input: { quoteId: string; fromStatus: QuoteStatus; toStatus: QuoteStatus; actorId: string },
+): Promise<"updated" | "unchanged"> {
+  if (!/^[a-zA-Z0-9_-]{1,100}$/.test(input.quoteId) ||
+      !isQuoteStatus(input.fromStatus) || !isQuoteStatus(input.toStatus) ||
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.actorId) ||
+      input.actorId.length > 150) throw new Error("Invalid status update");
+  if (input.fromStatus === input.toStatus) return "unchanged";
+  const eventId = crypto.randomUUID();
+  // SQLite changes() observes the immediately preceding UPDATE within the same
+  // D1 batch transaction; the audit insert is skipped when the UPDATE changed 0 rows.
+  await db.batch([
+    db.prepare(
+      "UPDATE quote_requests SET status = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ? AND status = ? AND deleted_at IS NULL"
+    ).bind(input.toStatus, input.quoteId, input.fromStatus),
+    db.prepare(
+      "INSERT INTO quote_status_events (id, quote_request_id, from_status, to_status, actor_id) SELECT ?, ?, ?, ?, ? WHERE changes() = 1"
+    ).bind(eventId, input.quoteId, input.fromStatus, input.toStatus, input.actorId),
+  ]);
+  const event = await db.prepare("SELECT id FROM quote_status_events WHERE id = ?").bind(eventId).first<{ id: string }>();
+  return event ? "updated" : "unchanged";
+}
+
+/** Bounded, parameterized search; call only after verified admin authorization. */
+export async function searchQuotesForAuthorizedAdmin(
+  db: Database,
+  filters: { status?: QuoteStatus; query?: string; limit?: number } = {},
+): Promise<QuoteRow[]> {
+  const limit = filters.limit ?? 25;
+  if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw new Error("Invalid limit");
+  if (filters.status !== undefined && !isQuoteStatus(filters.status)) throw new Error("Invalid status");
+  const query = filters.query?.trim() ?? "";
+  if (query.length > 100) throw new Error("Search too long");
+  const clauses = ["deleted_at IS NULL"];
+  const bindings: unknown[] = [];
+  if (filters.status) {
+    clauses.push("status = ?");
+    bindings.push(filters.status);
+  }
+  if (query) {
+    // Treat LIKE wildcard characters literally.
+    const escaped = query.replace(/[\\%_]/g, "\\$&");
+    clauses.push("(name LIKE ? ESCAPE '\\' OR email LIKE ? ESCAPE '\\' OR service LIKE ? ESCAPE '\\')");
+    bindings.push(...Array(3).fill("%" + escaped + "%"));
+  }
+  const sql = "SELECT id, created_at, name, email, service, status FROM quote_requests WHERE " +
+    clauses.join(" AND ") + " ORDER BY created_at DESC, id DESC LIMIT ?";
+  const { results } = await db.prepare(sql).bind(...bindings, limit).all<QuoteRow>();
+  return results;
+}
