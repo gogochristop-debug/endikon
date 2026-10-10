@@ -19,7 +19,7 @@ export type QuoteValidationResult =
   | { ok: true; value: QuoteRequestInput }
   | { ok: false; error: "invalid_request" };
 
-const emailPattern = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export function validateQuoteRequest(
   input: unknown,
   allowedServices: ReadonlySet<string>,
