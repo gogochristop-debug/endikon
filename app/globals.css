@@ -96,11 +96,14 @@ small {
   font-size: var(--text-label);
 }
 .header {
-  background: rgba(248, 247, 243, 0.97);
+  background: var(--paper);
   border-bottom: 1px solid var(--line);
   position: sticky;
   top: 0;
   z-index: 30;
+}
+.header.scrolled {
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--ink) 6%, transparent);
 }
 .header-inner {
   max-width: 1440px;
