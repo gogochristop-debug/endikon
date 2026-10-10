@@ -101,7 +101,6 @@ export function Website({
               <span className="icon">
                 <Icon size={25} strokeWidth={1.3} />
               </span>
-              <span className="card-number">0{i + 1}</span>
             </div>
             <h3>{s[lang].title}</h3>
             <p>{s[lang].desc}</p>
