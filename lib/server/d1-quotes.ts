@@ -46,8 +46,8 @@ type MutationDatabase = { prepare(sql: string): MutationStatement; batch(stateme
 
 /**
  * Call only AFTER a verified administrator identity.
- * The conditional update prevents stale status changes; the audit event is inserted
- * in the same D1 batch transaction.
+ * The update and audit event execute in one D1 batch transaction.
+ * This helper is not exposed until concurrent-update safeguards and API tests pass.
  */
 export async function changeQuoteStatusForAuthorizedAdmin(
   db: MutationDatabase,
