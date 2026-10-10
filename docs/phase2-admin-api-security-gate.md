@@ -10,3 +10,12 @@ Before implementing a D1-backed admin API, the following are required:
 6. Verify both authenticated and unauthenticated behavior in the preview environment, and only then deploy.
 
 No API route is enabled by this document.
+
+## Implemented (read-only, fail-closed)
+
+- `GET /api/admin/quotes` checks the Cloudflare Access RS256 JWT against the team's JWKS, issuer, audience, expiry and exact administrator email.
+- Missing configuration returns 503; missing/invalid JWT returns 401. D1 is queried only after verification.
+- Set Worker environment variables `ACCESS_TEAM_DOMAIN` (e.g. `https://your-team.cloudflareaccess.com`), `ACCESS_ADMIN_AUD` (the dedicated API Access app AUD tag), and `ACCESS_ADMIN_EMAIL` (the authorized administrator).
+- **Create an Access application covering `/api/admin/*` with the correct admin-only policy before configuring these variables.** Existing `/el/admin*` and `/en/admin*` policies do not cover API routes.
+- Preview and production remain disabled until these variables are explicitly configured. The public quote intake stays disabled.
+- Verify deployment build, 401 without JWT, 200 with valid admin JWT, and database reads containing only synthetic records before considering rollout.
