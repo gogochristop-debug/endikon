@@ -27,10 +27,12 @@ import {
   Compass,
   HeartHandshake,
   LaptopMinimal,
+  Headset,
 } from "lucide-react";
 import { copy, services, type Lang } from "@/lib/content";
 const icons = [ChartNoAxesCombined, Globe2, House, Layers3, Users, Files];
 const aboutIcons = [Compass, HeartHandshake, LaptopMinimal];
+const processIcons = [MessageSquare, FileText, Headset];
 export function Website({
   lang,
   route,
@@ -626,13 +628,22 @@ export function Website({
                 <span className="eyebrow">{t.processTag}</span>
                 <h2>{t.processTitle}</h2>
                 <div className="process-grid">
-                  {t.steps.map((s, i) => (
-                    <div key={s}>
-                      <span className="step-number">0{i + 1}</span>
-                      <h3>{s}</h3>
-                      <p>{t.stepText[i]}</p>
-                    </div>
-                  ))}
+                  {t.steps.map((s, i) => {
+                    const Icon = processIcons[i];
+                    return (
+                      <div className="process-step" key={s}>
+                        <Icon
+                          className="process-icon"
+                          size={32}
+                          strokeWidth={1.25}
+                          aria-hidden="true"
+                          focusable="false"
+                        />
+                        <h3>{s}</h3>
+                        <p>{t.stepText[i]}</p>
+                      </div>
+                    );
+                  })}
                 </div>
               </section>
             </>
