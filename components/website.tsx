@@ -24,9 +24,13 @@ import {
   FileText,
   MessageSquare,
   Plus,
+  Compass,
+  HeartHandshake,
+  LaptopMinimal,
 } from "lucide-react";
 import { copy, services, type Lang } from "@/lib/content";
 const icons = [ChartNoAxesCombined, Globe2, House, Layers3, Users, Files];
+const aboutIcons = [Compass, HeartHandshake, LaptopMinimal];
 export function Website({
   lang,
   route,
@@ -679,14 +683,23 @@ export function Website({
                   <span>{t.footer}</span>
                 </div>
               </div>
-              <div className="process-grid values">
-                {t.aboutValues.map((v, i) => (
-                  <div key={v}>
-                    <span className="step-number">0{i + 1}</span>
-                    <h3>{v}</h3>
-                    <p>{t.stepText[i]}</p>
-                  </div>
-                ))}
+              <div className="about-values">
+                {t.aboutValues.map((v, i) => {
+                  const Icon = aboutIcons[i];
+                  return (
+                    <section className="about-value" key={v}>
+                      <Icon
+                        className="about-value-icon"
+                        size={32}
+                        strokeWidth={1.25}
+                        aria-hidden="true"
+                        focusable="false"
+                      />
+                      <h3>{v}</h3>
+                      <p>{t.stepText[i]}</p>
+                    </section>
+                  );
+                })}
               </div>
             </section>
           ) : route === "quote" || route === "contact" ? (
