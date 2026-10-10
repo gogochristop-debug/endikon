@@ -124,22 +124,16 @@ small {
   font-size: 30px;
   letter-spacing: 0;
 }
-.brand-symbol {
-  font-family: var(--serif);
-  border: 1px solid var(--teal);
-  color: var(--teal);
-  font-size: 21px;
-  margin-right: 12px;
-  padding: 7px 8px;
-  position: relative;
-  letter-spacing: 0;
+.header-brand {
+  flex: 0 0 auto;
+  width: 240px;
 }
-.brand-symbol:after {
-  content: "";
-  position: absolute;
-  inset: 4px;
-  border: 1px solid var(--teal);
-  opacity: 0.3;
+.header-logo {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 2086 / 705;
+  object-fit: contain;
 }
 .nav,
 .header-actions {
@@ -1111,6 +1105,9 @@ td .text-link {
   .header-inner {
     padding: 18px 5%;
   }
+  .header-brand {
+    width: 210px;
+  }
   .brand {
     font-size: 22px;
   }
@@ -1395,8 +1392,9 @@ small, .trust, .consent, .footer-bottom, .domain,
 }
 @media (max-width: 480px) {
   .header-inner { gap: 8px; flex-wrap: wrap; }
+  .header .header-inner { flex-wrap: nowrap; }
+  .header-brand { width: 164px; }
   .header-actions { margin-left: auto; gap: 8px; }
-  .brand-symbol { margin-right: 8px; }
   .hero .eyebrow { flex-wrap: wrap; }
   .hero h1 { font-size: clamp(2.25rem, 10vw, 2.875rem); }
   .hero-buttons { width: 100%; }
