@@ -444,8 +444,10 @@ em,
 }
 .card-top {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
+  min-height: 48px;
+  flex-shrink: 0;
   margin-bottom: 24px;
 }
 .icon {
@@ -456,10 +458,6 @@ em,
   width: 48px;
   height: 48px;
   border: 1px solid var(--line);
-}
-.card-number {
-  font-size: var(--text-label);
-  color: var(--ink);
 }
 .service-card h3 {
   font-size: clamp(22px, 1.75vw, 25px);
@@ -1460,7 +1458,6 @@ input::placeholder, textarea::placeholder {
 .art-grain { opacity: 0.18; }
 .art-caption { gap: 16px; letter-spacing: 0.5px; }
 .floating-note { max-width: calc(100% - 24px); }
-.card-number { letter-spacing: 1px; }
 .service-card .text-link { padding-top: 18px; border-top: 1px solid var(--line); }
 .service-card .text-link svg, .button svg, .header-quote svg {
   transition: transform 0.2s ease;
@@ -1517,7 +1514,6 @@ input::placeholder, textarea::placeholder {
   .floating-note { bottom: 76px; }
   .art-caption { bottom: 18px; left: 20px; right: 20px; font-size: var(--text-label); }
   .section { padding-block: 44px; }
-  .service-grid { grid-auto-rows: auto; }
   .service-card { padding: 26px; }
   .process .process-grid { gap: 24px; margin-top: 28px; }
   .cta { padding-block: 40px; }
