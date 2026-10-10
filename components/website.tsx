@@ -68,6 +68,13 @@ export function Website({
   }, [lang, route]);
 
   const t = copy[lang];
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const updateScrolled = () => setScrolled(window.scrollY > 0);
+    updateScrolled();
+    window.addEventListener("scroll", updateScrolled, { passive: true });
+    return () => window.removeEventListener("scroll", updateScrolled);
+  }, []);
   const [menu, setMenu] = useState(false);
   const [notice, setNotice] = useState("");
   const [selected, setSelected] = useState(initialService ?? services[0].slug);
@@ -185,7 +192,7 @@ export function Website({
       <a className="skip-link" href="#main-content">
         {lang === "el" ? "Μετάβαση στο περιεχόμενο" : "Skip to content"}
       </a>
-      <header className="header">
+      <header className={scrolled ? "header scrolled" : "header"}>
         <div className="header-inner">
           <Link href={href()} className="brand header-brand">
             <Image
