@@ -24,3 +24,8 @@
 
 ## Current status
 This PR contains **schema and validation foundations only**. It does NOT provide registration, client authentication, uploads, R2 bucket creation, document download or any exposed API endpoint.
+
+## Implementation update
+- New documents default to `quarantined` in D1 until a verified scan clears them.
+- Database insert/update triggers reject linking a document to a requirement belonging to another case.
+- `DOCUMENTS_BUCKET` binds the private development R2 bucket in Wrangler production and preview settings. No file access endpoints are active.
