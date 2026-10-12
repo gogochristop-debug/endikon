@@ -15,7 +15,19 @@
       "database_id": "cdf95f72-43fa-4d9d-bbfe-8b73ec3a3011"
     }
   ],
+  "r2_buckets": [
+    {
+      "binding": "DOCUMENTS_BUCKET",
+      "bucket_name": "endikon-documents-dev"
+    }
+  ],
   "previews": {
+    "r2_buckets": [
+      {
+        "binding": "DOCUMENTS_BUCKET",
+        "bucket_name": "endikon-documents-dev"
+      }
+    ],
     "d1_databases": [
       {
         "binding": "DB",
