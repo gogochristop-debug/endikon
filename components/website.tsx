@@ -436,7 +436,7 @@ export function Website({
                           <tr><td colSpan={4}>{lang === "el" ? "Η διαχείριση πελατών, υποθέσεων και προσφορών παραμένει σε δοκιμαστική λειτουργία. Τα αιτήματα εμφανίζονται στην Επισκόπηση." : "Client, case and quote management is still a demo. Requests are shown in Overview."}</td></tr>
                         ) : adminQuotes.length === 0 ? (
                           <tr><td colSpan={4}>{lang === "el" ? "Δεν υπάρχουν καταχωρισμένα αιτήματα." : "No requests found."}</td></tr>
-                        ) : adminQuotes                        ).map((quote) => (
+                        ) : adminQuotes.map((quote) => (
                           <tr key={quote.id}>
                             <td><strong>{quote.name}</strong><small>{quote.email}</small></td>
                             <td>{quote.service}</td>
