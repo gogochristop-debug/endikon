@@ -79,6 +79,32 @@ export function Website({
   const [notice, setNotice] = useState("");
   const [selected, setSelected] = useState(initialService ?? services[0].slug);
   const [search, setSearch] = useState("");
+  type AdminQuote = { id: string; created_at: string; name: string; email: string; service: string; status: string };
+  const [adminQuotes, setAdminQuotes] = useState<AdminQuote[]>([]);
+  const [adminQuotesState, setAdminQuotesState] = useState<"loading" | "ready" | "error">("loading");
+  useEffect(() => {
+    if (!route.startsWith("admin")) return;
+    const controller = new AbortController();
+    setAdminQuotesState("loading");
+    fetch("/api/admin/quotes", { credentials: "same-origin", cache: "no-store", signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Admin API unavailable");
+        const payload: unknown = await response.json();
+        if (!payload || typeof payload !== "object" || !("quotes" in payload) || !Array.isArray(payload.quotes)) {
+          throw new Error("Invalid admin API response");
+        }
+        return payload.quotes as AdminQuote[];
+      })
+      .then((quotes) => {
+        if (controller.signal.aborted) return;
+        setAdminQuotes(quotes);
+        setAdminQuotesState("ready");
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setAdminQuotesState("error");
+      });
+    return () => controller.abort();
+  }, [route]);
   const href = (path = "") => `/${lang}${path ? "/" + path : ""}`;
   const dashboard = route.startsWith("portal") || route.startsWith("admin");
   const isAdmin = route.startsWith("admin");
@@ -354,17 +380,15 @@ export function Website({
                 isAdmin ? t.requests : t.active,
                 isAdmin ? t.clients : t.pending,
                 t.quoteStatus,
-              ].map((s, i) => (
-                <div className="stat" key={s}>
-                  <span>{s}</span>
-                  <strong>{i === 2 ? t.review : i === 0 ? "02" : "03"}</strong>
-                  <small>
-                    {i === 2
-                      ? t.quoteDesc
-                      : lang === "el"
-                        ? "Δοκιμαστικός χώρος εργασίας"
-                        : "Demonstration workspace"}
-                  </small>
+              ].map((label, i) => (
+                <div className="stat" key={label}>
+                  <span>{label}</span>
+                  <strong>{isAdmin && i === 0
+                    ? adminQuotesState === "ready" ? String(adminQuotes.length) : "—"
+                    : isAdmin ? "—" : i === 2 ? t.review : i === 0 ? "02" : "03"}</strong>
+                  <small>{isAdmin
+                    ? lang === "el" ? "Μόνο τα αιτήματα συνδέονται με τη δοκιμαστική βάση" : "Only requests are connected to the development database"
+                    : i === 2 ? t.quoteDesc : lang === "el" ? "Δοκιμαστικός χώρος εργασίας" : "Demonstration workspace"}</small>
                 </div>
               ))}
             </div>
@@ -400,48 +424,26 @@ export function Website({
                         </tr>
                       </thead>
                       <tbody>
-                        {[
-                          { name: "Alex K.", service: 1 },
-                          { name: "Jamie P.", service: 0 },
-                          { name: "Morgan D.", service: 2 },
-                        ]
-                          .filter((c) =>
-                            `${c.name} ${services[c.service][lang].title}`
-                              .toLowerCase()
-                              .includes(search.toLowerCase()),
-                          )
-                          .map((c) => (
-                            <tr key={c.name}>
-                              <td>
-                                <strong>{c.name}</strong>
-                                <small>
-                                  {lang === "el"
-                                    ? "Πλασματικός πελάτης"
-                                    : "Fictional client"}
-                                </small>
-                              </td>
-                              <td>{services[c.service][lang].title}</td>
-                              <td>
-                                <span className="pill">{t.review}</span>
-                              </td>
-                              <td>
-                                <button
-                                  className="text-link"
-                                  onClick={() => setNotice(t.action)}
-                                >
-                                  {t.requestDoc}
-                                  <Plus size={14} />
-                                </button>
-                                <button
-                                  className="text-link"
-                                  onClick={() => setNotice(t.action)}
-                                >
-                                  {t.prepare}
-                                  <ArrowUpRight size={14} />
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
+                        {adminQuotesState === "loading" ? (
+                          <tr><td colSpan={4}>{lang === "el" ? "Φόρτωση αιτημάτων…" : "Loading requests…"}</td></tr>
+                        ) : adminQuotesState === "error" ? (
+                          <tr><td colSpan={4} role="alert">{lang === "el" ? "Δεν ήταν δυνατή η ασφαλής φόρτωση των αιτημάτων. Δοκιμάστε ξανά μετά από ανανέωση." : "Could not securely load requests. Refresh to retry."}</td></tr>
+                        ) : route !== "admin" ? (
+                          <tr><td colSpan={4}>{lang === "el" ? "Η διαχείριση πελατών, υποθέσεων και προσφορών παραμένει σε δοκιμαστική λειτουργία. Τα αιτήματα εμφανίζονται στην Επισκόπηση." : "Client, case and quote management is still a demo. Requests are shown in Overview."}</td></tr>
+                        ) : adminQuotes.filter((quote) =>
+                          `${quote.name} ${quote.email} ${quote.service} ${quote.status}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())
+                        ).length === 0 ? (
+                          <tr><td colSpan={4}>{lang === "el" ? "Δεν υπάρχουν καταχωρισμένα αιτήματα." : "No requests found."}</td></tr>
+                        ) : adminQuotes.filter((quote) =>
+                          `${quote.name} ${quote.email} ${quote.service} ${quote.status}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())
+                        ).map((quote) => (
+                          <tr key={quote.id}>
+                            <td><strong>{quote.name}</strong><small>{quote.email}</small></td>
+                            <td>{quote.service}</td>
+                            <td><span className="pill">{quote.status}</span></td>
+                            <td>{lang === "el" ? "Μόνο προβολή" : "Read only"}</td>
+                          </tr>
+                        ))}
                       </tbody>
                     </table>
                   </div>
