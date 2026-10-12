@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS case_documents (
   content_type TEXT NOT NULL,
   byte_size INTEGER NOT NULL CHECK(byte_size > 0 AND byte_size <= 10485760),
   sha256 TEXT NOT NULL CHECK(length(sha256) = 64),
-  status TEXT NOT NULL DEFAULT 'pending_review' CHECK(status IN ('pending_review','accepted','resubmit_requested','quarantined')),
+  status TEXT NOT NULL DEFAULT 'quarantined' CHECK(status IN ('pending_review','accepted','resubmit_requested','quarantined')),
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
   deleted_at TEXT
 );
@@ -48,3 +48,24 @@ CREATE TABLE IF NOT EXISTS case_document_events (
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 );
 CREATE INDEX IF NOT EXISTS idx_case_document_events_doc ON case_document_events(document_id, created_at DESC);
+
+-- Enforce checklist ownership even if application-level authorization has a bug.
+CREATE TRIGGER IF NOT EXISTS trg_case_document_requirement_insert
+BEFORE INSERT ON case_documents
+WHEN NEW.requirement_id IS NOT NULL AND NOT EXISTS (
+  SELECT 1 FROM case_document_requirements r
+  WHERE r.id = NEW.requirement_id AND r.case_id = NEW.case_id
+)
+BEGIN
+  SELECT RAISE(ABORT, 'Document requirement must belong to its case');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_case_document_requirement_update
+BEFORE UPDATE OF requirement_id, case_id ON case_documents
+WHEN NEW.requirement_id IS NOT NULL AND NOT EXISTS (
+  SELECT 1 FROM case_document_requirements r
+  WHERE r.id = NEW.requirement_id AND r.case_id = NEW.case_id
+)
+BEGIN
+  SELECT RAISE(ABORT, 'Document requirement must belong to its case');
+END;
