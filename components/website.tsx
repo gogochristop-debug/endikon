@@ -81,30 +81,34 @@ export function Website({
   const [search, setSearch] = useState("");
   type AdminQuote = { id: string; created_at: string; name: string; email: string; service: string; status: string };
   const [adminQuotes, setAdminQuotes] = useState<AdminQuote[]>([]);
+  const [adminQuoteTotal, setAdminQuoteTotal] = useState(0);
+  const [adminQuoteOffset, setAdminQuoteOffset] = useState(0);
   const [adminQuotesState, setAdminQuotesState] = useState<"loading" | "ready" | "error">("loading");
   useEffect(() => {
     if (!route.startsWith("admin")) return;
     const controller = new AbortController();
     setAdminQuotesState("loading");
-    fetch("/api/admin/quotes", { credentials: "same-origin", cache: "no-store", signal: controller.signal })
+    const params = new URLSearchParams({ q: search.trim().slice(0, 100), offset: String(adminQuoteOffset) });
+    fetch(`/api/admin/quotes?${params}`, { credentials: "same-origin", cache: "no-store", signal: controller.signal })
       .then(async (response) => {
         if (!response.ok) throw new Error("Admin API unavailable");
         const payload: unknown = await response.json();
-        if (!payload || typeof payload !== "object" || !("quotes" in payload) || !Array.isArray(payload.quotes)) {
+        if (!payload || typeof payload !== "object" || !("quotes" in payload) || !Array.isArray(payload.quotes) || !("total" in payload) || typeof payload.total !== "number") {
           throw new Error("Invalid admin API response");
         }
-        return payload.quotes as AdminQuote[];
+        return { quotes: payload.quotes as AdminQuote[], total: payload.total as number };
       })
-      .then((quotes) => {
+      .then(({ quotes, total }) => {
         if (controller.signal.aborted) return;
         setAdminQuotes(quotes);
+        setAdminQuoteTotal(total);
         setAdminQuotesState("ready");
       })
       .catch(() => {
         if (!controller.signal.aborted) setAdminQuotesState("error");
       });
     return () => controller.abort();
-  }, [route]);
+  }, [route, search, adminQuoteOffset]);
   const href = (path = "") => `/${lang}${path ? "/" + path : ""}`;
   const dashboard = route.startsWith("portal") || route.startsWith("admin");
   const isAdmin = route.startsWith("admin");
@@ -384,7 +388,7 @@ export function Website({
                 <div className="stat" key={label}>
                   <span>{label}</span>
                   <strong>{isAdmin && i === 0
-                    ? adminQuotesState === "ready" ? String(adminQuotes.length) : "—"
+                    ? adminQuotesState === "ready" ? String(adminQuoteTotal) : "—"
                     : isAdmin ? "—" : i === 2 ? t.review : i === 0 ? "02" : "03"}</strong>
                   <small>{isAdmin
                     ? lang === "el" ? "Μόνο τα αιτήματα συνδέονται με τη δοκιμαστική βάση" : "Only requests are connected to the development database"
@@ -410,7 +414,7 @@ export function Website({
                       aria-label={lang === "el" ? "Αναζήτηση" : "Search"}
                       placeholder={lang === "el" ? "Αναζήτηση…" : "Search…"}
                       value={search}
-                      onChange={(e) => setSearch(e.target.value)}
+                      onChange={(e) => { setSearch(e.target.value); setAdminQuoteOffset(0); }}
                     />
                   </div>
                   <div className="table-wrap">
@@ -430,13 +434,9 @@ export function Website({
                           <tr><td colSpan={4} role="alert">{lang === "el" ? "Δεν ήταν δυνατή η ασφαλής φόρτωση των αιτημάτων. Δοκιμάστε ξανά μετά από ανανέωση." : "Could not securely load requests. Refresh to retry."}</td></tr>
                         ) : route !== "admin" ? (
                           <tr><td colSpan={4}>{lang === "el" ? "Η διαχείριση πελατών, υποθέσεων και προσφορών παραμένει σε δοκιμαστική λειτουργία. Τα αιτήματα εμφανίζονται στην Επισκόπηση." : "Client, case and quote management is still a demo. Requests are shown in Overview."}</td></tr>
-                        ) : adminQuotes.filter((quote) =>
-                          `${quote.name} ${quote.email} ${quote.service} ${quote.status}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())
-                        ).length === 0 ? (
+                        ) : adminQuotes.length === 0 ? (
                           <tr><td colSpan={4}>{lang === "el" ? "Δεν υπάρχουν καταχωρισμένα αιτήματα." : "No requests found."}</td></tr>
-                        ) : adminQuotes.filter((quote) =>
-                          `${quote.name} ${quote.email} ${quote.service} ${quote.status}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())
-                        ).map((quote) => (
+                        ) : adminQuotes                        ).map((quote) => (
                           <tr key={quote.id}>
                             <td><strong>{quote.name}</strong><small>{quote.email}</small></td>
                             <td>{quote.service}</td>
@@ -447,6 +447,17 @@ export function Website({
                       </tbody>
                     </table>
                   </div>
+                  {route === "admin" && adminQuotesState === "ready" && adminQuoteTotal > 0 && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 16 }}>
+                      <button type="button" disabled={adminQuoteOffset === 0} onClick={() => setAdminQuoteOffset(Math.max(0, adminQuoteOffset - 25))}>
+                        {lang === "el" ? "Προηγούμενα" : "Previous"}
+                      </button>
+                      <span>{adminQuoteOffset + 1}–{Math.min(adminQuoteOffset + 25, adminQuoteTotal)} / {adminQuoteTotal}</span>
+                      <button type="button" disabled={adminQuoteOffset + 25 >= adminQuoteTotal} onClick={() => setAdminQuoteOffset(adminQuoteOffset + 25)}>
+                        {lang === "el" ? "Επόμενα" : "Next"}
+                      </button>
+                    </div>
+                  )}
                 </div>
                 <div className="panel">
                   <h2>{t.prepare}</h2>
