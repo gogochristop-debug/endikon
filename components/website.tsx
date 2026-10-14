@@ -109,6 +109,34 @@ export function Website({
       });
     return () => controller.abort();
   }, [route, search, adminQuoteOffset]);
+  type AdminCase = { id: string; title: string; status: string; created_at: string; updated_at: string };
+  const [adminCases, setAdminCases] = useState<AdminCase[]>([]);
+  const [adminCaseTotal, setAdminCaseTotal] = useState(0);
+  const [adminCaseOffset, setAdminCaseOffset] = useState(0);
+  const [adminCasesState, setAdminCasesState] = useState<"loading" | "ready" | "error">("loading");
+  useEffect(() => {
+    if (route !== "admin/cases") return;
+    const controller = new AbortController();
+    setAdminCasesState("loading");
+    const params = new URLSearchParams({ q: search.trim().slice(0, 100), offset: String(adminCaseOffset) });
+    fetch(`/api/admin/cases?${params}`, { credentials: "same-origin", cache: "no-store", signal: controller.signal })
+      .then(async response => {
+        if (!response.ok) throw new Error("Case API unavailable");
+        const payload: unknown = await response.json();
+        if (!payload || typeof payload !== "object" || !("cases" in payload) || !Array.isArray(payload.cases) || !("total" in payload) || typeof payload.total !== "number") {
+          throw new Error("Invalid case API response");
+        }
+        return { cases: payload.cases as AdminCase[], total: payload.total as number };
+      })
+      .then(({ cases, total }) => {
+        if (controller.signal.aborted) return;
+        setAdminCases(cases);
+        setAdminCaseTotal(total);
+        setAdminCasesState("ready");
+      })
+      .catch(() => { if (!controller.signal.aborted) setAdminCasesState("error"); });
+    return () => controller.abort();
+  }, [route, search, adminCaseOffset]);
   const href = (path = "") => `/${lang}${path ? "/" + path : ""}`;
   const dashboard = route.startsWith("portal") || route.startsWith("admin");
   const isAdmin = route.startsWith("admin");
@@ -414,9 +442,36 @@ export function Website({
                       aria-label={lang === "el" ? "Αναζήτηση" : "Search"}
                       placeholder={lang === "el" ? "Αναζήτηση…" : "Search…"}
                       value={search}
-                      onChange={(e) => { setSearch(e.target.value); setAdminQuoteOffset(0); }}
+                      onChange={(e) => { setSearch(e.target.value); setAdminQuoteOffset(0); setAdminCaseOffset(0); }}
                     />
                   </div>
+                  {route === "admin/cases" ? (
+                    <>
+                      <div className="table-wrap">
+                        <table>
+                          <thead><tr><th>{lang === "el" ? "Υπόθεση" : "Case"}</th><th>{lang === "el" ? "Κατάσταση" : "Status"}</th><th>{lang === "el" ? "Δημιουργήθηκε" : "Created"}</th><th>{lang === "el" ? "Πρόσβαση" : "Access"}</th></tr></thead>
+                          <tbody>
+                            {adminCasesState === "loading" ? (
+                              <tr><td colSpan={4}>{lang === "el" ? "Φόρτωση υποθέσεων…" : "Loading cases…"}</td></tr>
+                            ) : adminCasesState === "error" ? (
+                              <tr><td colSpan={4} role="alert">{lang === "el" ? "Δεν ήταν δυνατή η ασφαλής φόρτωση των υποθέσεων." : "Could not securely load cases."}</td></tr>
+                            ) : adminCases.length === 0 ? (
+                              <tr><td colSpan={4}>{lang === "el" ? "Δεν υπάρχουν υποθέσεις στη δοκιμαστική βάση." : "No cases in the development database."}</td></tr>
+                            ) : adminCases.map(item => (
+                              <tr key={item.id}><td><strong>{item.title}</strong></td><td><span className="pill">{item.status}</span></td><td>{item.created_at.slice(0, 10)}</td><td>{lang === "el" ? "Μόνο προβολή" : "Read only"}</td></tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      {adminCasesState === "ready" && adminCaseTotal > 0 && (
+                        <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 16 }}>
+                          <button type="button" disabled={adminCaseOffset === 0} onClick={() => setAdminCaseOffset(Math.max(0, adminCaseOffset - 25))}>{lang === "el" ? "Προηγούμενα" : "Previous"}</button>
+                          <span>{adminCaseOffset + 1}–{Math.min(adminCaseOffset + 25, adminCaseTotal)} / {adminCaseTotal}</span>
+                          <button type="button" disabled={adminCaseOffset + 25 >= adminCaseTotal} onClick={() => setAdminCaseOffset(adminCaseOffset + 25)}>{lang === "el" ? "Επόμενα" : "Next"}</button>
+                        </div>
+                      )}
+                    </>
+                  ) : (
                   <div className="table-wrap">
                     <table>
                       <thead>
@@ -447,6 +502,7 @@ export function Website({
                       </tbody>
                     </table>
                   </div>
+                  )}
                   {route === "admin" && adminQuotesState === "ready" && adminQuoteTotal > 0 && (
                     <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 16 }}>
                       <button type="button" disabled={adminQuoteOffset === 0} onClick={() => setAdminQuoteOffset(Math.max(0, adminQuoteOffset - 25))}>
