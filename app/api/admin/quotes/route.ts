@@ -36,7 +36,7 @@ export async function GET(request: Request): Promise<Response> {
     const query = params.get("q") ?? "";
     const offsetText = params.get("offset") ?? "0";
     const offset = Number(offsetText);
-    if ((status !== null && !isQuoteStatus(status)) || query.length > 100 || !/^\\d+$/.test(offsetText) || !Number.isSafeInteger(offset) || offset > 1000000) {
+    if ((status !== null && !isQuoteStatus(status)) || query.length > 100 || !/^\d+$/.test(offsetText) || !Number.isSafeInteger(offset) || offset > 1000000) {
       return new Response(JSON.stringify({ error: "Invalid filters" }), { status: 400, headers });
     }
     const page = await pageQuotesForAuthorizedAdmin(settings.DB, {
