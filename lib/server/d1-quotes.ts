@@ -102,3 +102,36 @@ export async function searchQuotesForAuthorizedAdmin(
   const { results } = await db.prepare(sql).bind(...bindings, limit).all<QuoteRow>();
   return results;
 }
+
+/** Paginated server-side search with an accurate filtered total. */
+export async function pageQuotesForAuthorizedAdmin(
+  db: Database,
+  filters: { status?: QuoteStatus; query?: string; limit?: number; offset?: number } = {},
+): Promise<{ quotes: QuoteRow[]; total: number }> {
+  const limit = filters.limit ?? 25;
+  const offset = filters.offset ?? 0;
+  if (!Number.isInteger(limit) || limit < 1 || limit > 100 ||
+      !Number.isInteger(offset) || offset < 0 || offset > 1000000) throw new Error("Invalid pagination");
+  if (filters.status !== undefined && !isQuoteStatus(filters.status)) throw new Error("Invalid status");
+  const query = filters.query?.trim() ?? "";
+  if (query.length > 100) throw new Error("Search too long");
+  const clauses = ["deleted_at IS NULL"];
+  const bindings: unknown[] = [];
+  if (filters.status) {
+    clauses.push("status = ?");
+    bindings.push(filters.status);
+  }
+  if (query) {
+    const escaped = query.replace(/[\\%_]/g, "\\$&");
+    clauses.push("(name LIKE ? ESCAPE '\\' OR email LIKE ? ESCAPE '\\' OR service LIKE ? ESCAPE '\\')");
+    bindings.push(...Array(3).fill("%" + escaped + "%"));
+  }
+  const where = clauses.join(" AND ");
+  const countRows = await db.prepare("SELECT COUNT(*) AS total FROM quote_requests WHERE " + where)
+    .bind(...bindings).all<{ total: number }>();
+  const { results } = await db.prepare(
+    "SELECT id, created_at, name, email, service, status FROM quote_requests WHERE " +
+    where + " ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?"
+  ).bind(...bindings, limit, offset).all<QuoteRow>();
+  return { quotes: results, total: Number(countRows.results[0]?.total ?? 0) };
+}
