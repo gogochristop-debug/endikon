@@ -136,7 +136,28 @@ export function Website({
       })
       .catch(() => { if (!controller.signal.aborted) setAdminCasesState("error"); });
     return () => controller.abort();
-  }, [route, search, adminCaseOffset]);
+  }, [route, search, adminCaseOffset, caseReload]);
+  const [demoTemplate, setDemoTemplate] = useState("debt");
+  const [demoCreateState, setDemoCreateState] = useState<"idle" | "saving" | "error" | "done">("idle");
+  const [caseReload, setCaseReload] = useState(0);
+  async function createDemoCase() {
+    if (demoCreateState === "saving") return;
+    setDemoCreateState("saving");
+    try {
+      const response = await fetch("/api/admin/cases", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ template: demoTemplate }),
+      });
+      if (!response.ok) throw new Error("Create failed");
+      setDemoCreateState("done");
+      setAdminCaseOffset(0);
+      setCaseReload(n => n + 1);
+    } catch {
+      setDemoCreateState("error");
+    }
+  }
   const href = (path = "") => `/${lang}${path ? "/" + path : ""}`;
   const dashboard = route.startsWith("portal") || route.startsWith("admin");
   const isAdmin = route.startsWith("admin");
@@ -447,6 +468,20 @@ export function Website({
                   </div>
                   {route === "admin/cases" ? (
                     <>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", marginBottom: 20 }}>
+                        <label htmlFor="demo-case-template">{lang === "el" ? "Νέα δοκιμαστική υπόθεση" : "New demo case"}</label>
+                        <select id="demo-case-template" value={demoTemplate} onChange={e => { setDemoTemplate(e.target.value); setDemoCreateState("idle"); }}>
+                          <option value="debt">{lang === "el" ? "Ρύθμιση οφειλών" : "Debt settlement"}</option>
+                          <option value="immigration">{lang === "el" ? "Άδεια διαμονής" : "Residence permit"}</option>
+                          <option value="property">{lang === "el" ? "Έλεγχος ακινήτου" : "Property review"}</option>
+                        </select>
+                        <button type="button" disabled={demoCreateState === "saving"} onClick={createDemoCase}>
+                          {demoCreateState === "saving" ? (lang === "el" ? "Αποθήκευση…" : "Saving…") : (lang === "el" ? "Δημιουργία demo υπόθεσης" : "Create demo case")}
+                        </button>
+                      </div>
+                      <p style={{ marginBottom: 14 }}>{lang === "el" ? "Μόνο εικονικά στοιχεία. Μην καταχωρίζετε πραγματικά δεδομένα πελατών." : "Fictional data only. Do not enter real client information."}</p>
+                      {demoCreateState === "error" && <p role="alert">{lang === "el" ? "Η δημιουργία απέτυχε. Δοκιμάστε ξανά." : "Creation failed. Please retry."}</p>}
+                      {demoCreateState === "done" && <p role="status">{lang === "el" ? "Η δοκιμαστική υπόθεση δημιουργήθηκε." : "Demo case created."}</p>
                       <div className="table-wrap">
                         <table>
                           <thead><tr><th>{lang === "el" ? "Υπόθεση" : "Case"}</th><th>{lang === "el" ? "Κατάσταση" : "Status"}</th><th>{lang === "el" ? "Δημιουργήθηκε" : "Created"}</th><th>{lang === "el" ? "Πρόσβαση" : "Access"}</th></tr></thead>
