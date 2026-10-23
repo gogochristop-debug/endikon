@@ -115,6 +115,29 @@ export function Website({
   const [adminCaseOffset, setAdminCaseOffset] = useState(0);
   const [adminCasesState, setAdminCasesState] = useState<"loading" | "ready" | "error">("loading");
   const [caseReload, setCaseReload] = useState(0);
+  type DemoRequirement = { id: string; label: string; description: string | null; required: number };
+  const [selectedCase, setSelectedCase] = useState<AdminCase | null>(null);
+  const [selectedRequirements, setSelectedRequirements] = useState<DemoRequirement[]>([]);
+  const [caseDetailState, setCaseDetailState] = useState<"idle" | "loading" | "ready" | "error">("idle");
+  async function viewDemoCase(item: AdminCase) {
+    setSelectedCase(item);
+    setSelectedRequirements([]);
+    setCaseDetailState("loading");
+    try {
+      const response = await fetch(`/api/admin/cases?id=${encodeURIComponent(item.id)}`, {
+        credentials: "same-origin", cache: "no-store",
+      });
+      if (!response.ok) throw new Error("Could not load case");
+      const payload: unknown = await response.json();
+      if (!payload || typeof payload !== "object" || !("requirements" in payload) ||
+          !Array.isArray(payload.requirements)) throw new Error("Invalid case response");
+      setSelectedRequirements(payload.requirements as DemoRequirement[]);
+      setCaseDetailState("ready");
+    } catch {
+      setCaseDetailState("error");
+    }
+  }
+
   useEffect(() => {
     if (route !== "admin/cases") return;
     const controller = new AbortController();
@@ -493,11 +516,28 @@ export function Website({
                             ) : adminCases.length === 0 ? (
                               <tr><td colSpan={4}>{lang === "el" ? "Δεν υπάρχουν υποθέσεις στη δοκιμαστική βάση." : "No cases in the development database."}</td></tr>
                             ) : adminCases.map(item => (
-                              <tr key={item.id}><td><strong>{item.title}</strong></td><td><span className="pill">{item.status}</span></td><td>{item.created_at.slice(0, 10)}</td><td>{lang === "el" ? "Μόνο προβολή" : "Read only"}</td></tr>
+                              <tr key={item.id}><td><strong>{item.title}</strong></td><td><span className="pill">{item.status}</span></td><td>{item.created_at.slice(0, 10)}</td><td><button type="button" onClick={() => void viewDemoCase(item)}>{lang === "el" ? "Προβολή" : "View"}</button></td></tr>
                             ))}
                           </tbody>
                         </table>
                       </div>
+                      {selectedCase && (
+                        <section className="panel" aria-label={lang === "el" ? "Καρτέλα δοκιμαστικής υπόθεσης" : "Demo case details"} style={{ marginTop: 20 }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                            <h3>{selectedCase.title}</h3>
+                            <button type="button" onClick={() => { setSelectedCase(null); setCaseDetailState("idle"); }}>{lang === "el" ? "Κλείσιμο" : "Close"}</button>
+                          </div>
+                          <p>{lang === "el" ? "Κατάσταση" : "Status"}: {selectedCase.status}</p>
+                          <p>{lang === "el" ? "Ημερομηνία δημιουργίας" : "Created"}: {selectedCase.created_at.slice(0, 10)}</p>
+                          <h4>{lang === "el" ? "Απαιτούμενα δικαιολογητικά" : "Document checklist"}</h4>
+                          {caseDetailState === "loading" && <p>{lang === "el" ? "Φόρτωση…" : "Loading…"}</p>}
+                          {caseDetailState === "error" && <p role="alert">{lang === "el" ? "Δεν ήταν δυνατή η φόρτωση της καρτέλας." : "Could not load case details."}</p>}
+                          {caseDetailState === "ready" && (selectedRequirements.length === 0
+                            ? <p>{lang === "el" ? "Δεν έχουν προστεθεί δικαιολογητικά ακόμη." : "No document requirements yet."}</p>
+                            : <ul>{selectedRequirements.map(r => <li key={r.id}>{r.label}{r.required ? " *" : ""}{r.description ? ` — ${r.description}` : ""}</li>)}</ul>)}
+                          <p>{lang === "el" ? "Δοκιμαστική προβολή μόνο. Δεν υποστηρίζονται ακόμη μεταφορτώσεις αρχείων." : "Demo read-only view. File uploads are not yet available."}</p>
+                        </section>
+                      )}
                       {adminCasesState === "ready" && adminCaseTotal > 0 && (
                         <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 16 }}>
                           <button type="button" disabled={adminCaseOffset === 0} onClick={() => setAdminCaseOffset(Math.max(0, adminCaseOffset - 25))}>{lang === "el" ? "Προηγούμενα" : "Previous"}</button>
