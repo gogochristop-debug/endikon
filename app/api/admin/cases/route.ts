@@ -29,6 +29,21 @@ export async function GET(request: Request): Promise<Response> {
     if (!authorized) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers });
     if (!config.DB) return new Response(JSON.stringify({ error: "Database unavailable" }), { status: 503, headers });
     const params = new URL(request.url).searchParams;
+    const caseId = params.get("id");
+    if (caseId !== null) {
+      if (!/^[0-9a-f]{8}-[0-9a-f-]{27,40}$/i.test(caseId)) {
+        return new Response(JSON.stringify({ error: "Invalid case ID" }), { status: 400, headers });
+      }
+      const selected = await config.DB.prepare(
+        "SELECT id, title, status, created_at, updated_at FROM client_cases WHERE id = ? AND client_user_id = ? AND deleted_at IS NULL"
+      ).bind(caseId, "demo-fictional-client").all<CaseRow>();
+      const item = selected.results[0];
+      if (!item) return new Response(JSON.stringify({ error: "Demo case not found" }), { status: 404, headers });
+      const requirements = await config.DB.prepare(
+        "SELECT id, label, description, required, sort_order FROM case_document_requirements WHERE case_id = ? ORDER BY sort_order, id"
+      ).bind(caseId).all<{ id: string; label: string; description: string | null; required: number; sort_order: number }>();
+      return new Response(JSON.stringify({ case: item, requirements: requirements.results }), { status: 200, headers });
+    }
     const query = (params.get("q") ?? "").trim();
     const offsetText = params.get("offset") ?? "0";
     const offset = Number(offsetText);
