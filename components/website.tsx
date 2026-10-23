@@ -560,7 +560,7 @@ export function Website({
                             </select>
                             {caseStatusSaving && <span role="status">{lang === "el" ? "Αποθήκευση…" : "Saving…"}</span>}
                           </div>
-                          {caseStatusError && <p role="alert">{lang === "el" ? "Δεν αποθηκεύτηκε η αλλαγή κατάστασης." : "Could not save status change."}</p>
+                          {caseStatusError && <p role="alert">{lang === "el" ? "Δεν αποθηκεύτηκε η αλλαγή κατάστασης." : "Could not save status change."}</p>}
                           <p>{lang === "el" ? "Ημερομηνία δημιουργίας" : "Created"}: {selectedCase.created_at.slice(0, 10)}</p>
                           <h4>{lang === "el" ? "Απαιτούμενα δικαιολογητικά" : "Document checklist"}</h4>
                           {caseDetailState === "loading" && <p>{lang === "el" ? "Φόρτωση…" : "Loading…"}</p>}
