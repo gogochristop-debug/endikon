@@ -114,6 +114,7 @@ export function Website({
   const [adminCaseTotal, setAdminCaseTotal] = useState(0);
   const [adminCaseOffset, setAdminCaseOffset] = useState(0);
   const [adminCasesState, setAdminCasesState] = useState<"loading" | "ready" | "error">("loading");
+  const [caseReload, setCaseReload] = useState(0);
   useEffect(() => {
     if (route !== "admin/cases") return;
     const controller = new AbortController();
@@ -139,7 +140,6 @@ export function Website({
   }, [route, search, adminCaseOffset, caseReload]);
   const [demoTemplate, setDemoTemplate] = useState("debt");
   const [demoCreateState, setDemoCreateState] = useState<"idle" | "saving" | "error" | "done">("idle");
-  const [caseReload, setCaseReload] = useState(0);
   async function createDemoCase() {
     if (demoCreateState === "saving") return;
     setDemoCreateState("saving");
