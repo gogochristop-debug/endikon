@@ -4,7 +4,7 @@ import { verifyAdminAccess } from "@/lib/server/access-auth";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-type Statement = { bind(...values: unknown[]): Statement; all<T>(): Promise<{ results: T[] }> };
+type Statement = { bind(...values: unknown[]): Statement; all<T>(): Promise<{ results: T[] }>; run(): Promise<unknown> };
 type Env = {
   DB?: { prepare(sql: string): Statement };
   ACCESS_TEAM_DOMAIN?: string;
@@ -45,5 +45,58 @@ export async function GET(request: Request): Promise<Response> {
     return new Response(JSON.stringify({ cases: rows.results, total: Number(count.results[0]?.total ?? 0), limit: 25, offset }), { status: 200, headers });
   } catch {
     return new Response(JSON.stringify({ error: "Service unavailable" }), { status: 503, headers });
+  }
+}
+
+/**
+ * Phase 3 demo-only case creation. Fixed fictional templates prevent accidental
+ * storage of real client details before the production security review.
+ */
+const DEMO_TEMPLATES = {
+  debt: "DEMO — Ρύθμιση οφειλών (εικονική υπόθεση)",
+  immigration: "DEMO — Άδεια διαμονής (εικονική υπόθεση)",
+  property: "DEMO — Έλεγχος ακινήτου (εικονική υπόθεση)",
+} as const;
+
+export async function POST(request: Request): Promise<Response> {
+  const headers = { "Cache-Control": "no-store", "Content-Type": "application/json" };
+  try {
+    const url = new URL(request.url);
+    // A valid Access session alone is insufficient to prevent cross-site writes.
+    if (request.headers.get("origin") !== url.origin ||
+        !request.headers.get("content-type")?.toLowerCase().startsWith("application/json")) {
+      return new Response(JSON.stringify({ error: "Invalid request origin or content type" }), { status: 403, headers });
+    }
+    const { env } = await getCloudflareContext();
+    const config = env as unknown as Env;
+    if (!config.ACCESS_TEAM_DOMAIN || !config.ACCESS_ADMIN_AUD || !config.ACCESS_ADMIN_EMAIL) {
+      return new Response(JSON.stringify({ error: "Admin API not configured" }), { status: 503, headers });
+    }
+    const authorized = await verifyAdminAccess(request.headers.get("cf-access-jwt-assertion"), {
+      teamDomain: config.ACCESS_TEAM_DOMAIN,
+      audience: config.ACCESS_ADMIN_AUD,
+      adminEmail: config.ACCESS_ADMIN_EMAIL,
+    });
+    if (!authorized) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers });
+    if (!config.DB) return new Response(JSON.stringify({ error: "Database unavailable" }), { status: 503, headers });
+    const length = Number(request.headers.get("content-length") ?? "0");
+    if (!Number.isFinite(length) || length > 1024) {
+      return new Response(JSON.stringify({ error: "Request too large" }), { status: 413, headers });
+    }
+    const body: unknown = await request.json();
+    if (!body || typeof body !== "object" || Array.isArray(body) ||
+        Object.keys(body).length !== 1 || !("template" in body) ||
+        typeof body.template !== "string" ||
+        !Object.prototype.hasOwnProperty.call(DEMO_TEMPLATES, body.template)) {
+      return new Response(JSON.stringify({ error: "Invalid demo template" }), { status: 400, headers });
+    }
+    const template = body.template as keyof typeof DEMO_TEMPLATES;
+    const id = crypto.randomUUID();
+    await config.DB.prepare(
+      "INSERT INTO client_cases (id, client_user_id, title, status) VALUES (?, ?, ?, 'open')"
+    ).bind(id, "demo-fictional-client", DEMO_TEMPLATES[template]).run();
+    return new Response(JSON.stringify({ id, title: DEMO_TEMPLATES[template], status: "open" }), { status: 201, headers });
+  } catch {
+    return new Response(JSON.stringify({ error: "Could not create demo case" }), { status: 503, headers });
   }
 }
