@@ -115,3 +115,46 @@ export async function POST(request: Request): Promise<Response> {
     return new Response(JSON.stringify({ error: "Could not create demo case" }), { status: 503, headers });
   }
 }
+
+const DEMO_STATUSES = ["open", "waiting_documents", "in_review", "completed", "archived"] as const;
+
+export async function PATCH(request: Request): Promise<Response> {
+  const headers = { "Cache-Control": "no-store", "Content-Type": "application/json" };
+  try {
+    if (request.headers.get("origin") !== new URL(request.url).origin ||
+        !request.headers.get("content-type")?.toLowerCase().startsWith("application/json")) {
+      return new Response(JSON.stringify({ error: "Invalid request origin or content type" }), { status: 403, headers });
+    }
+    const { env } = await getCloudflareContext();
+    const config = env as unknown as Env;
+    if (!config.ACCESS_TEAM_DOMAIN || !config.ACCESS_ADMIN_AUD || !config.ACCESS_ADMIN_EMAIL) {
+      return new Response(JSON.stringify({ error: "Admin API not configured" }), { status: 503, headers });
+    }
+    const authorized = await verifyAdminAccess(request.headers.get("cf-access-jwt-assertion"), {
+      teamDomain: config.ACCESS_TEAM_DOMAIN, audience: config.ACCESS_ADMIN_AUD, adminEmail: config.ACCESS_ADMIN_EMAIL,
+    });
+    if (!authorized) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers });
+    if (!config.DB) return new Response(JSON.stringify({ error: "Database unavailable" }), { status: 503, headers });
+    if (Number(request.headers.get("content-length") ?? "0") > 1024) {
+      return new Response(JSON.stringify({ error: "Request too large" }), { status: 413, headers });
+    }
+    const body: unknown = await request.json();
+    if (!body || typeof body !== "object" || Array.isArray(body) ||
+        Object.keys(body).sort().join(",") !== "id,status" ||
+        !("id" in body) || typeof body.id !== "string" ||
+        !/^[0-9a-f]{8}-[0-9a-f-]{27,40}$/i.test(body.id) ||
+        !("status" in body) || typeof body.status !== "string" ||
+        !DEMO_STATUSES.some(status => status === body.status)) {
+      return new Response(JSON.stringify({ error: "Invalid case status request" }), { status: 400, headers });
+    }
+    const id = body.id as string;
+    const status = body.status as string;
+    const result = await config.DB.prepare(
+      "UPDATE client_cases SET status = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ? AND client_user_id = ? AND deleted_at IS NULL"
+    ).bind(status, id, "demo-fictional-client").run() as { meta?: { changes?: number } };
+    if (!result.meta?.changes) return new Response(JSON.stringify({ error: "Demo case not found" }), { status: 404, headers });
+    return new Response(JSON.stringify({ id, status }), { status: 200, headers });
+  } catch {
+    return new Response(JSON.stringify({ error: "Could not update demo case" }), { status: 503, headers });
+  }
+}
