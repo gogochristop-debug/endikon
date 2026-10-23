@@ -481,7 +481,7 @@ export function Website({
                       </div>
                       <p style={{ marginBottom: 14 }}>{lang === "el" ? "Μόνο εικονικά στοιχεία. Μην καταχωρίζετε πραγματικά δεδομένα πελατών." : "Fictional data only. Do not enter real client information."}</p>
                       {demoCreateState === "error" && <p role="alert">{lang === "el" ? "Η δημιουργία απέτυχε. Δοκιμάστε ξανά." : "Creation failed. Please retry."}</p>}
-                      {demoCreateState === "done" && <p role="status">{lang === "el" ? "Η δοκιμαστική υπόθεση δημιουργήθηκε." : "Demo case created."}</p>
+                      {demoCreateState === "done" && <p role="status">{lang === "el" ? "Η δοκιμαστική υπόθεση δημιουργήθηκε." : "Demo case created."}</p>}
                       <div className="table-wrap">
                         <table>
                           <thead><tr><th>{lang === "el" ? "Υπόθεση" : "Case"}</th><th>{lang === "el" ? "Κατάσταση" : "Status"}</th><th>{lang === "el" ? "Δημιουργήθηκε" : "Created"}</th><th>{lang === "el" ? "Πρόσβαση" : "Access"}</th></tr></thead>
