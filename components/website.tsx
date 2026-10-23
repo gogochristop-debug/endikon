@@ -115,6 +115,28 @@ export function Website({
   const [adminCaseOffset, setAdminCaseOffset] = useState(0);
   const [adminCasesState, setAdminCasesState] = useState<"loading" | "ready" | "error">("loading");
   const [caseReload, setCaseReload] = useState(0);
+  const [caseStatusSaving, setCaseStatusSaving] = useState(false);
+  const [caseStatusError, setCaseStatusError] = useState(false);
+  async function updateDemoCaseStatus(status: string) {
+    if (!selectedCase || caseStatusSaving) return;
+    setCaseStatusSaving(true);
+    setCaseStatusError(false);
+    try {
+      const response = await fetch("/api/admin/cases", {
+        method: "PATCH", credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: selectedCase.id, status }),
+      });
+      if (!response.ok) throw new Error("Update failed");
+      setSelectedCase(current => current ? { ...current, status } : current);
+      setCaseReload(value => value + 1);
+    } catch {
+      setCaseStatusError(true);
+    } finally {
+      setCaseStatusSaving(false);
+    }
+  }
+
   type DemoRequirement = { id: string; label: string; description: string | null; required: number };
   const [selectedCase, setSelectedCase] = useState<AdminCase | null>(null);
   const [selectedRequirements, setSelectedRequirements] = useState<DemoRequirement[]>([]);
@@ -527,7 +549,18 @@ export function Website({
                             <h3>{selectedCase.title}</h3>
                             <button type="button" onClick={() => { setSelectedCase(null); setCaseDetailState("idle"); }}>{lang === "el" ? "Κλείσιμο" : "Close"}</button>
                           </div>
-                          <p>{lang === "el" ? "Κατάσταση" : "Status"}: {selectedCase.status}</p>
+                          <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+                            <label htmlFor="demo-case-status">{lang === "el" ? "Κατάσταση" : "Status"}</label>
+                            <select id="demo-case-status" value={selectedCase.status} disabled={caseStatusSaving} onChange={event => void updateDemoCaseStatus(event.target.value)}>
+                              <option value="open">{lang === "el" ? "Ανοιχτή" : "Open"}</option>
+                              <option value="waiting_documents">{lang === "el" ? "Αναμονή δικαιολογητικών" : "Waiting for documents"}</option>
+                              <option value="in_review">{lang === "el" ? "Υπό εξέταση" : "In review"}</option>
+                              <option value="completed">{lang === "el" ? "Ολοκληρωμένη" : "Completed"}</option>
+                              <option value="archived">{lang === "el" ? "Αρχειοθετημένη" : "Archived"}</option>
+                            </select>
+                            {caseStatusSaving && <span role="status">{lang === "el" ? "Αποθήκευση…" : "Saving…"}</span>}
+                          </div>
+                          {caseStatusError && <p role="alert">{lang === "el" ? "Δεν αποθηκεύτηκε η αλλαγή κατάστασης." : "Could not save status change."}</p>
                           <p>{lang === "el" ? "Ημερομηνία δημιουργίας" : "Created"}: {selectedCase.created_at.slice(0, 10)}</p>
                           <h4>{lang === "el" ? "Απαιτούμενα δικαιολογητικά" : "Document checklist"}</h4>
                           {caseDetailState === "loading" && <p>{lang === "el" ? "Φόρτωση…" : "Loading…"}</p>}
