@@ -162,6 +162,28 @@ export function Website({
       setRequirementSavingId(null);
     }
   }
+  const [customRequirementLabel, setCustomRequirementLabel] = useState("");
+  const [customRequirementRequired, setCustomRequirementRequired] = useState(true);
+  const [customRequirementState, setCustomRequirementState] = useState<"idle" | "saving" | "error">("idle");
+  async function addCustomDemoRequirement() {
+    if (!selectedCase || customRequirementState === "saving") return;
+    const label = customRequirementLabel.trim();
+    if (!label || label.length > 110) { setCustomRequirementState("error"); return; }
+    setCustomRequirementState("saving");
+    try {
+      const response = await fetch("/api/admin/cases/requirements", {
+        method: "POST", credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ caseId: selectedCase.id, label: `DEMO — ${label}`, required: customRequirementRequired }),
+      });
+      if (!response.ok) throw new Error("Cannot add requirement");
+      await viewDemoCase(selectedCase);
+      setCustomRequirementLabel("");
+      setCustomRequirementState("idle");
+    } catch {
+      setCustomRequirementState("error");
+    }
+  }
   const [checklistTemplate, setChecklistTemplate] = useState("debt");
   const [checklistState, setChecklistState] = useState<"idle" | "saving" | "error">("idle");
   async function addDemoChecklist() {
@@ -623,6 +645,17 @@ export function Website({
                               </button>
                             </div>
                           )}
+                          {caseDetailState === "ready" && (
+                            <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginTop: 16 }}>
+                              <label htmlFor="custom-demo-requirement">{lang === "el" ? "Νέο δοκιμαστικό δικαιολογητικό" : "New demo requirement"}</label>
+                              <input id="custom-demo-requirement" type="text" maxLength={110} value={customRequirementLabel} onChange={event => { setCustomRequirementLabel(event.target.value); setCustomRequirementState("idle"); }} placeholder={lang === "el" ? "Περιγραφή (μόνο εικονικά στοιχεία)" : "Description (fictional only)"} />
+                              <label><input type="checkbox" checked={customRequirementRequired} onChange={event => setCustomRequirementRequired(event.target.checked)} /> {lang === "el" ? "Υποχρεωτικό" : "Required"}</label>
+                              <button type="button" disabled={customRequirementState === "saving" || !customRequirementLabel.trim()} onClick={() => void addCustomDemoRequirement()}>
+                                {customRequirementState === "saving" ? (lang === "el" ? "Αποθήκευση…" : "Saving…") : (lang === "el" ? "Προσθήκη" : "Add")}
+                              </button>
+                            </div>
+                          )}
+                          {customRequirementState === "error" && <p role="alert">{lang === "el" ? "Δεν προστέθηκε το δοκιμαστικό δικαιολογητικό. Ελέγξτε το κείμενο ή τυχόν διπλότυπο." : "Could not add demo requirement. Check the text or duplicates."}</p>}
                           {checklistState === "error" && <p role="alert">{lang === "el" ? "Η λίστα δεν αποθηκεύτηκε. Ελέγξτε αν υπάρχει ήδη." : "Checklist was not saved. It may already exist."}</p>}
                           <p>{lang === "el" ? "Δοκιμαστική προβολή μόνο. Δεν υποστηρίζονται ακόμη μεταφορτώσεις αρχείων." : "Demo read-only view. File uploads are not yet available."}</p>
                         </section>
