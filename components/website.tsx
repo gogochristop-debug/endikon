@@ -162,6 +162,28 @@ export function Website({
       setRequirementSavingId(null);
     }
   }
+  const [deletingRequirementId, setDeletingRequirementId] = useState<string | null>(null);
+  const [deleteRequirementError, setDeleteRequirementError] = useState(false);
+  async function deleteDemoRequirement(item: DemoRequirement) {
+    if (!selectedCase || deletingRequirementId || !item.label.startsWith("DEMO — ")) return;
+    if (!window.confirm(lang === "el" ? "Να αφαιρεθεί αυτό το δοκιμαστικό δικαιολογητικό;" : "Remove this fictional requirement?")) return;
+    setDeletingRequirementId(item.id);
+    setDeleteRequirementError(false);
+    try {
+      const response = await fetch("/api/admin/cases/requirements", {
+        method: "DELETE", credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ caseId: selectedCase.id, requirementId: item.id }),
+      });
+      if (!response.ok) throw new Error("Delete failed");
+      setSelectedRequirements(items => items.filter(r => r.id !== item.id));
+      if (editingRequirementId === item.id) setEditingRequirementId(null);
+    } catch {
+      setDeleteRequirementError(true);
+    } finally {
+      setDeletingRequirementId(null);
+    }
+  }
   const [editingRequirementId, setEditingRequirementId] = useState<string | null>(null);
   const [editingRequirementLabel, setEditingRequirementLabel] = useState("");
   const [editRequirementState, setEditRequirementState] = useState<"idle" | "saving" | "error">("idle");
@@ -654,6 +676,7 @@ export function Website({
                             : <ul>{selectedRequirements.map(r => <li key={r.id}>
                               <label><input type="checkbox" checked={r.required === 1} disabled={requirementSavingId !== null} onChange={() => void toggleDemoRequirement(r)} /> {r.label}{r.description ? ` — ${r.description}` : ""}</label>
                               <button type="button" disabled={editRequirementState === "saving"} onClick={() => { setEditingRequirementId(r.id); setEditingRequirementLabel(r.label.replace(/^DEMO — /, "")); setEditRequirementState("idle"); }}>{lang === "el" ? "Επεξεργασία" : "Edit"}</button>
+                              {r.label.startsWith("DEMO — ") && <button type="button" disabled={deletingRequirementId !== null} onClick={() => void deleteDemoRequirement(r)}>{lang === "el" ? "Αφαίρεση" : "Remove"}</button>}
                             </li>)}</ul>)}
                           {editingRequirementId && (
                             <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
@@ -663,6 +686,7 @@ export function Website({
                               <button type="button" onClick={() => { setEditingRequirementId(null); setEditRequirementState("idle"); }}>{lang === "el" ? "Ακύρωση" : "Cancel"}</button>
                             </div>
                           )}
+                          {deleteRequirementError && <p role="alert">{lang === "el" ? "Δεν αφαιρέθηκε το δικαιολογητικό. Ίσως συνδέεται με έγγραφο." : "Could not remove requirement. It may be linked to a document."}</p>}
                           {editRequirementState === "error" && <p role="alert">{lang === "el" ? "Η αλλαγή δεν αποθηκεύτηκε." : "Could not save the change."}</p>}
                           {caseDetailState === "ready" && selectedRequirements.length > 0 && <p>{lang === "el" ? "Επιλεγμένο = υποχρεωτικό δικαιολογητικό. Οι αλλαγές αποθηκεύονται στη δοκιμαστική βάση." : "Checked = required document. Changes are saved to the demo database."}</p>}
                           {requirementError && <p role="alert">{lang === "el" ? "Δεν αποθηκεύτηκε η αλλαγή δικαιολογητικού." : "Could not save document requirement."}</p>}

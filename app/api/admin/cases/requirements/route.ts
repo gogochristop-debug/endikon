@@ -126,3 +126,43 @@ export async function PATCH(request: Request): Promise<Response> {
     return new Response(JSON.stringify({ error: "Could not rename requirement" }), { status: 503, headers });
   }
 }
+
+/** Delete one fictional checklist item, only when no document references it. */
+export async function DELETE(request: Request): Promise<Response> {
+  try {
+    if (request.headers.get("origin") !== new URL(request.url).origin ||
+        !request.headers.get("content-type")?.toLowerCase().startsWith("application/json")) {
+      return new Response(JSON.stringify({ error: "Invalid request" }), { status: 403, headers });
+    }
+    const { env } = await getCloudflareContext();
+    const config = env as unknown as Env;
+    if (!config.ACCESS_TEAM_DOMAIN || !config.ACCESS_ADMIN_AUD || !config.ACCESS_ADMIN_EMAIL) {
+      return new Response(JSON.stringify({ error: "Admin API not configured" }), { status: 503, headers });
+    }
+    const authorized = await verifyAdminAccess(request.headers.get("cf-access-jwt-assertion"), {
+      teamDomain: config.ACCESS_TEAM_DOMAIN, audience: config.ACCESS_ADMIN_AUD, adminEmail: config.ACCESS_ADMIN_EMAIL,
+    });
+    if (!authorized) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers });
+    if (!config.DB) return new Response(JSON.stringify({ error: "Database unavailable" }), { status: 503, headers });
+    const length = Number(request.headers.get("content-length") ?? "0");
+    if (!Number.isFinite(length) || length > 1024) {
+      return new Response(JSON.stringify({ error: "Request too large" }), { status: 413, headers });
+    }
+    const body: unknown = await request.json();
+    if (!body || typeof body !== "object" || Array.isArray(body) ||
+        Object.keys(body).sort().join(",") !== "caseId,requirementId" ||
+        !("caseId" in body) || typeof body.caseId !== "string" || !uuid.test(body.caseId) ||
+        !("requirementId" in body) || typeof body.requirementId !== "string" || !uuid.test(body.requirementId)) {
+      return new Response(JSON.stringify({ error: "Invalid delete request" }), { status: 400, headers });
+    }
+    const caseId = body.caseId as string;
+    const requirementId = body.requirementId as string;
+    const result = await config.DB.prepare(
+      "DELETE FROM case_document_requirements WHERE id = ? AND case_id = ? AND label LIKE 'DEMO — %' AND EXISTS (SELECT 1 FROM client_cases WHERE id = ? AND client_user_id = ? AND title LIKE 'DEMO — %' AND deleted_at IS NULL) AND NOT EXISTS (SELECT 1 FROM case_documents WHERE requirement_id = ?)"
+    ).bind(requirementId, caseId, caseId, "demo-fictional-client", requirementId).run() as { meta?: { changes?: number } };
+    if (!result.meta?.changes) return new Response(JSON.stringify({ error: "Item missing, not fictional, or linked to a document" }), { status: 409, headers });
+    return new Response(JSON.stringify({ deleted: requirementId }), { status: 200, headers });
+  } catch {
+    return new Response(JSON.stringify({ error: "Could not delete demo requirement" }), { status: 503, headers });
+  }
+}
