@@ -162,6 +162,28 @@ export function Website({
       setRequirementSavingId(null);
     }
   }
+  const [editingRequirementId, setEditingRequirementId] = useState<string | null>(null);
+  const [editingRequirementLabel, setEditingRequirementLabel] = useState("");
+  const [editRequirementState, setEditRequirementState] = useState<"idle" | "saving" | "error">("idle");
+  async function saveRequirementEdit() {
+    if (!selectedCase || !editingRequirementId || editRequirementState === "saving") return;
+    const label = editingRequirementLabel.trim();
+    if (!label || label.length > 110) { setEditRequirementState("error"); return; }
+    setEditRequirementState("saving");
+    try {
+      const response = await fetch("/api/admin/cases/requirements", {
+        method: "PATCH", credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ caseId: selectedCase.id, requirementId: editingRequirementId, label: `DEMO — ${label}` }),
+      });
+      if (!response.ok) throw new Error("Rename failed");
+      setSelectedRequirements(items => items.map(item => item.id === editingRequirementId ? { ...item, label: `DEMO — ${label}` } : item));
+      setEditingRequirementId(null);
+      setEditRequirementState("idle");
+    } catch {
+      setEditRequirementState("error");
+    }
+  }
   const [customRequirementLabel, setCustomRequirementLabel] = useState("");
   const [customRequirementRequired, setCustomRequirementRequired] = useState(true);
   const [customRequirementState, setCustomRequirementState] = useState<"idle" | "saving" | "error">("idle");
@@ -629,7 +651,19 @@ export function Website({
                           {caseDetailState === "error" && <p role="alert">{lang === "el" ? "Δεν ήταν δυνατή η φόρτωση της καρτέλας." : "Could not load case details."}</p>}
                           {caseDetailState === "ready" && (selectedRequirements.length === 0
                             ? <p>{lang === "el" ? "Δεν έχουν προστεθεί δικαιολογητικά ακόμη." : "No document requirements yet."}</p>
-                            : <ul>{selectedRequirements.map(r => <li key={r.id}><label><input type="checkbox" checked={r.required === 1} disabled={requirementSavingId !== null} onChange={() => void toggleDemoRequirement(r)} /> {r.label}{r.description ? ` — ${r.description}` : ""}</label></li>)}</ul>)}
+                            : <ul>{selectedRequirements.map(r => <li key={r.id}>
+                              <label><input type="checkbox" checked={r.required === 1} disabled={requirementSavingId !== null} onChange={() => void toggleDemoRequirement(r)} /> {r.label}{r.description ? ` — ${r.description}` : ""}</label>
+                              <button type="button" disabled={editRequirementState === "saving"} onClick={() => { setEditingRequirementId(r.id); setEditingRequirementLabel(r.label.replace(/^DEMO — /, "")); setEditRequirementState("idle"); }}>{lang === "el" ? "Επεξεργασία" : "Edit"}</button>
+                            </li>)}</ul>)}
+                          {editingRequirementId && (
+                            <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                              <label htmlFor="edit-demo-requirement">{lang === "el" ? "Επεξεργασία δικαιολογητικού DEMO" : "Edit demo requirement"}</label>
+                              <input id="edit-demo-requirement" maxLength={110} value={editingRequirementLabel} onChange={event => setEditingRequirementLabel(event.target.value)} />
+                              <button type="button" disabled={editRequirementState === "saving" || !editingRequirementLabel.trim()} onClick={() => void saveRequirementEdit()}>{lang === "el" ? "Αποθήκευση" : "Save"}</button>
+                              <button type="button" onClick={() => { setEditingRequirementId(null); setEditRequirementState("idle"); }}>{lang === "el" ? "Ακύρωση" : "Cancel"}</button>
+                            </div>
+                          )}
+                          {editRequirementState === "error" && <p role="alert">{lang === "el" ? "Η αλλαγή δεν αποθηκεύτηκε." : "Could not save the change."}</p>}
                           {caseDetailState === "ready" && selectedRequirements.length > 0 && <p>{lang === "el" ? "Επιλεγμένο = υποχρεωτικό δικαιολογητικό. Οι αλλαγές αποθηκεύονται στη δοκιμαστική βάση." : "Checked = required document. Changes are saved to the demo database."}</p>}
                           {requirementError && <p role="alert">{lang === "el" ? "Δεν αποθηκεύτηκε η αλλαγή δικαιολογητικού." : "Could not save document requirement."}</p>}
                           {caseDetailState === "ready" && selectedRequirements.length === 0 && (
