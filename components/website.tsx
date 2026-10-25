@@ -141,6 +141,25 @@ export function Website({
   const [selectedCase, setSelectedCase] = useState<AdminCase | null>(null);
   const [selectedRequirements, setSelectedRequirements] = useState<DemoRequirement[]>([]);
   const [caseDetailState, setCaseDetailState] = useState<"idle" | "loading" | "ready" | "error">("idle");
+  const [checklistTemplate, setChecklistTemplate] = useState("debt");
+  const [checklistState, setChecklistState] = useState<"idle" | "saving" | "error">("idle");
+  async function addDemoChecklist() {
+    if (!selectedCase || checklistState === "saving" || selectedRequirements.length !== 0) return;
+    setChecklistState("saving");
+    try {
+      const response = await fetch("/api/admin/cases/checklist", {
+        method: "POST", credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ caseId: selectedCase.id, template: checklistTemplate }),
+      });
+      if (!response.ok) throw new Error("Checklist unavailable");
+      await viewDemoCase(selectedCase);
+      setChecklistState("idle");
+    } catch {
+      setChecklistState("error");
+    }
+  }
+
   async function viewDemoCase(item: AdminCase) {
     setSelectedCase(item);
     setSelectedRequirements([]);
@@ -568,6 +587,20 @@ export function Website({
                           {caseDetailState === "ready" && (selectedRequirements.length === 0
                             ? <p>{lang === "el" ? "Δεν έχουν προστεθεί δικαιολογητικά ακόμη." : "No document requirements yet."}</p>
                             : <ul>{selectedRequirements.map(r => <li key={r.id}>{r.label}{r.required ? " *" : ""}{r.description ? ` — ${r.description}` : ""}</li>)}</ul>)}
+                          {caseDetailState === "ready" && selectedRequirements.length === 0 && (
+                            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center", marginTop: 12 }}>
+                              <label htmlFor="demo-checklist-template">{lang === "el" ? "Πρότυπο δικαιολογητικών" : "Checklist template"}</label>
+                              <select id="demo-checklist-template" value={checklistTemplate} onChange={event => setChecklistTemplate(event.target.value)} disabled={checklistState === "saving"}>
+                                <option value="debt">{lang === "el" ? "Οφειλές" : "Debt"}</option>
+                                <option value="immigration">{lang === "el" ? "Διαμονή" : "Immigration"}</option>
+                                <option value="property">{lang === "el" ? "Ακίνητο" : "Property"}</option>
+                              </select>
+                              <button type="button" disabled={checklistState === "saving"} onClick={() => void addDemoChecklist()}>
+                                {checklistState === "saving" ? (lang === "el" ? "Αποθήκευση…" : "Saving…") : (lang === "el" ? "Προσθήκη λίστας DEMO" : "Add demo checklist")}
+                              </button>
+                            </div>
+                          )}
+                          {checklistState === "error" && <p role="alert">{lang === "el" ? "Η λίστα δεν αποθηκεύτηκε. Ελέγξτε αν υπάρχει ήδη." : "Checklist was not saved. It may already exist."}</p>}
                           <p>{lang === "el" ? "Δοκιμαστική προβολή μόνο. Δεν υποστηρίζονται ακόμη μεταφορτώσεις αρχείων." : "Demo read-only view. File uploads are not yet available."}</p>
                         </section>
                       )}
