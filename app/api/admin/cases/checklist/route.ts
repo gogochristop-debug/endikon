@@ -80,3 +80,48 @@ export async function POST(request: Request): Promise<Response> {
     return new Response(JSON.stringify({ error: "Could not create demo checklist" }), { status: 503, headers });
   }
 }
+
+/** Toggle the required flag for an existing fictional demo checklist item. */
+export async function PATCH(request: Request): Promise<Response> {
+  const headers = { "Cache-Control": "no-store", "Content-Type": "application/json" };
+  try {
+    if (request.headers.get("origin") !== new URL(request.url).origin ||
+        !request.headers.get("content-type")?.toLowerCase().startsWith("application/json")) {
+      return new Response(JSON.stringify({ error: "Invalid request" }), { status: 403, headers });
+    }
+    const { env } = await getCloudflareContext();
+    const config = env as unknown as Env;
+    if (!config.ACCESS_TEAM_DOMAIN || !config.ACCESS_ADMIN_AUD || !config.ACCESS_ADMIN_EMAIL) {
+      return new Response(JSON.stringify({ error: "Admin API not configured" }), { status: 503, headers });
+    }
+    const authorized = await verifyAdminAccess(request.headers.get("cf-access-jwt-assertion"), {
+      teamDomain: config.ACCESS_TEAM_DOMAIN, audience: config.ACCESS_ADMIN_AUD, adminEmail: config.ACCESS_ADMIN_EMAIL,
+    });
+    if (!authorized) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers });
+    if (!config.DB) return new Response(JSON.stringify({ error: "Database unavailable" }), { status: 503, headers });
+    const length = Number(request.headers.get("content-length") ?? "0");
+    if (!Number.isFinite(length) || length > 1024) {
+      return new Response(JSON.stringify({ error: "Request too large" }), { status: 413, headers });
+    }
+    const body: unknown = await request.json();
+    if (!body || typeof body !== "object" || Array.isArray(body) ||
+        Object.keys(body).sort().join(",") !== "caseId,required,requirementId" ||
+        !("caseId" in body) || typeof body.caseId !== "string" ||
+        !("requirementId" in body) || typeof body.requirementId !== "string" ||
+        !("required" in body) || typeof body.required !== "boolean" ||
+        !/^[0-9a-f]{8}-[0-9a-f-]{27,40}$/i.test(body.caseId) ||
+        !/^[0-9a-f]{8}-[0-9a-f-]{27,40}$/i.test(body.requirementId)) {
+      return new Response(JSON.stringify({ error: "Invalid requirement update" }), { status: 400, headers });
+    }
+    const caseId = body.caseId as string;
+    const requirementId = body.requirementId as string;
+    const required = body.required as boolean;
+    const result = await config.DB.prepare(
+      "UPDATE case_document_requirements SET required = ? WHERE id = ? AND case_id = ? AND EXISTS (SELECT 1 FROM client_cases WHERE id = ? AND client_user_id = ? AND title LIKE 'DEMO — %' AND deleted_at IS NULL)"
+    ).bind(required ? 1 : 0, requirementId, caseId, caseId, "demo-fictional-client").run() as { meta?: { changes?: number } };
+    if (!result.meta?.changes) return new Response(JSON.stringify({ error: "Demo requirement not found" }), { status: 404, headers });
+    return new Response(JSON.stringify({ id: requirementId, required }), { status: 200, headers });
+  } catch {
+    return new Response(JSON.stringify({ error: "Could not update requirement" }), { status: 503, headers });
+  }
+}

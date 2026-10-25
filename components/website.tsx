@@ -141,6 +141,27 @@ export function Website({
   const [selectedCase, setSelectedCase] = useState<AdminCase | null>(null);
   const [selectedRequirements, setSelectedRequirements] = useState<DemoRequirement[]>([]);
   const [caseDetailState, setCaseDetailState] = useState<"idle" | "loading" | "ready" | "error">("idle");
+  const [requirementSavingId, setRequirementSavingId] = useState<string | null>(null);
+  const [requirementError, setRequirementError] = useState(false);
+  async function toggleDemoRequirement(item: DemoRequirement) {
+    if (!selectedCase || requirementSavingId) return;
+    setRequirementSavingId(item.id);
+    setRequirementError(false);
+    try {
+      const required = item.required !== 1;
+      const response = await fetch("/api/admin/cases/checklist", {
+        method: "PATCH", credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ caseId: selectedCase.id, requirementId: item.id, required }),
+      });
+      if (!response.ok) throw new Error("Update failed");
+      setSelectedRequirements(current => current.map(r => r.id === item.id ? { ...r, required: required ? 1 : 0 } : r));
+    } catch {
+      setRequirementError(true);
+    } finally {
+      setRequirementSavingId(null);
+    }
+  }
   const [checklistTemplate, setChecklistTemplate] = useState("debt");
   const [checklistState, setChecklistState] = useState<"idle" | "saving" | "error">("idle");
   async function addDemoChecklist() {
@@ -586,7 +607,9 @@ export function Website({
                           {caseDetailState === "error" && <p role="alert">{lang === "el" ? "Δεν ήταν δυνατή η φόρτωση της καρτέλας." : "Could not load case details."}</p>}
                           {caseDetailState === "ready" && (selectedRequirements.length === 0
                             ? <p>{lang === "el" ? "Δεν έχουν προστεθεί δικαιολογητικά ακόμη." : "No document requirements yet."}</p>
-                            : <ul>{selectedRequirements.map(r => <li key={r.id}>{r.label}{r.required ? " *" : ""}{r.description ? ` — ${r.description}` : ""}</li>)}</ul>)}
+                            : <ul>{selectedRequirements.map(r => <li key={r.id}><label><input type="checkbox" checked={r.required === 1} disabled={requirementSavingId !== null} onChange={() => void toggleDemoRequirement(r)} /> {r.label}{r.description ? ` — ${r.description}` : ""}</label></li>)}</ul>)}
+                          {caseDetailState === "ready" && selectedRequirements.length > 0 && <p>{lang === "el" ? "Επιλεγμένο = υποχρεωτικό δικαιολογητικό. Οι αλλαγές αποθηκεύονται στη δοκιμαστική βάση." : "Checked = required document. Changes are saved to the demo database."}</p>}
+                          {requirementError && <p role="alert">{lang === "el" ? "Δεν αποθηκεύτηκε η αλλαγή δικαιολογητικού." : "Could not save document requirement."}</p>}
                           {caseDetailState === "ready" && selectedRequirements.length === 0 && (
                             <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center", marginTop: 12 }}>
                               <label htmlFor="demo-checklist-template">{lang === "el" ? "Πρότυπο δικαιολογητικών" : "Checklist template"}</label>
