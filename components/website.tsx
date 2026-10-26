@@ -130,7 +130,8 @@ export function Website({
       if (!response.ok) throw new Error("Update failed");
       setSelectedCase(current => current ? { ...current, status } : current);
       setCaseReload(value => value + 1);
-      setCaseStatusHistory(history => [{ id: `pending-${Date.now()}`, previous_status: selectedCase.status, new_status: status, created_at: new Date().toISOString() }, ...history].slice(0, 30));
+      // Reload persisted audit events; never fabricate an event in the UI.
+      void viewDemoCase({ ...selectedCase, status });
     } catch {
       setCaseStatusError(true);
     } finally {
@@ -143,6 +144,7 @@ export function Website({
   const [selectedRequirements, setSelectedRequirements] = useState<DemoRequirement[]>([]);
   type DemoStatusEvent = { id: string; previous_status: string; new_status: string; created_at: string };
   const [caseStatusHistory, setCaseStatusHistory] = useState<DemoStatusEvent[]>([]);
+  const [caseHistoryAvailable, setCaseHistoryAvailable] = useState(true);
 
   const [caseDetailState, setCaseDetailState] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const [requirementSavingId, setRequirementSavingId] = useState<string | null>(null);
@@ -255,6 +257,7 @@ export function Website({
     setSelectedCase(item);
     setSelectedRequirements([]);
     setCaseStatusHistory([]);
+    setCaseHistoryAvailable(true);
     setCaseDetailState("loading");
     try {
       const response = await fetch(`/api/admin/cases?id=${encodeURIComponent(item.id)}`, {
@@ -266,6 +269,7 @@ export function Website({
           !Array.isArray(payload.requirements)) throw new Error("Invalid case response");
       setSelectedRequirements(payload.requirements as DemoRequirement[]);
       setCaseStatusHistory("history" in payload && Array.isArray(payload.history) ? payload.history as DemoStatusEvent[] : []);
+      setCaseHistoryAvailable("historyAvailable" in payload && payload.historyAvailable === true);
       setCaseDetailState("ready");
     } catch {
       setCaseDetailState("error");
@@ -675,7 +679,8 @@ export function Website({
                           {caseStatusError && <p role="alert">{lang === "el" ? "Δεν αποθηκεύτηκε η αλλαγή κατάστασης." : "Could not save status change."}</p>}
                           <p>{lang === "el" ? "Ημερομηνία δημιουργίας" : "Created"}: {selectedCase.created_at.slice(0, 10)}</p>
                           <h4>{lang === "el" ? "Ιστορικό κατάστασης" : "Status history"}</h4>
-                          {caseDetailState === "ready" && (caseStatusHistory.length === 0
+                          {caseDetailState === "ready" && !caseHistoryAvailable && <p role="alert">{lang === "el" ? "Το ιστορικό δεν είναι διαθέσιμο. Απαιτείται η εφαρμογή της migration 0003 στη δοκιμαστική βάση D1." : "History is unavailable. Apply migration 0003 to the development D1 database."}</p>}
+                          {caseDetailState === "ready" && caseHistoryAvailable && (caseStatusHistory.length === 0
                             ? <p>{lang === "el" ? "Δεν υπάρχουν καταγεγραμμένες αλλαγές." : "No recorded changes yet."}</p>
                             : <ul>{caseStatusHistory.map(event => <li key={event.id}>{event.previous_status} → {event.new_status} · {event.created_at.slice(0, 19).replace("T", " ")}</li>)}</ul>)}
                           <h4>{lang === "el" ? "Απαιτούμενα δικαιολογητικά" : "Document checklist"}</h4>
