@@ -130,6 +130,7 @@ export function Website({
       if (!response.ok) throw new Error("Update failed");
       setSelectedCase(current => current ? { ...current, status } : current);
       setCaseReload(value => value + 1);
+      setCaseStatusHistory(history => [{ id: `pending-${Date.now()}`, previous_status: selectedCase.status, new_status: status, created_at: new Date().toISOString() }, ...history].slice(0, 30));
     } catch {
       setCaseStatusError(true);
     } finally {
@@ -140,6 +141,9 @@ export function Website({
   type DemoRequirement = { id: string; label: string; description: string | null; required: number };
   const [selectedCase, setSelectedCase] = useState<AdminCase | null>(null);
   const [selectedRequirements, setSelectedRequirements] = useState<DemoRequirement[]>([]);
+  type DemoStatusEvent = { id: string; previous_status: string; new_status: string; created_at: string };
+  const [caseStatusHistory, setCaseStatusHistory] = useState<DemoStatusEvent[]>([]);
+
   const [caseDetailState, setCaseDetailState] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const [requirementSavingId, setRequirementSavingId] = useState<string | null>(null);
   const [requirementError, setRequirementError] = useState(false);
@@ -250,6 +254,7 @@ export function Website({
   async function viewDemoCase(item: AdminCase) {
     setSelectedCase(item);
     setSelectedRequirements([]);
+    setCaseStatusHistory([]);
     setCaseDetailState("loading");
     try {
       const response = await fetch(`/api/admin/cases?id=${encodeURIComponent(item.id)}`, {
@@ -260,6 +265,7 @@ export function Website({
       if (!payload || typeof payload !== "object" || !("requirements" in payload) ||
           !Array.isArray(payload.requirements)) throw new Error("Invalid case response");
       setSelectedRequirements(payload.requirements as DemoRequirement[]);
+      setCaseStatusHistory("history" in payload && Array.isArray(payload.history) ? payload.history as DemoStatusEvent[] : []);
       setCaseDetailState("ready");
     } catch {
       setCaseDetailState("error");
@@ -668,6 +674,10 @@ export function Website({
                           </div>
                           {caseStatusError && <p role="alert">{lang === "el" ? "Δεν αποθηκεύτηκε η αλλαγή κατάστασης." : "Could not save status change."}</p>}
                           <p>{lang === "el" ? "Ημερομηνία δημιουργίας" : "Created"}: {selectedCase.created_at.slice(0, 10)}</p>
+                          <h4>{lang === "el" ? "Ιστορικό κατάστασης" : "Status history"}</h4>
+                          {caseDetailState === "ready" && (caseStatusHistory.length === 0
+                            ? <p>{lang === "el" ? "Δεν υπάρχουν καταγεγραμμένες αλλαγές." : "No recorded changes yet."}</p>
+                            : <ul>{caseStatusHistory.map(event => <li key={event.id}>{event.previous_status} → {event.new_status} · {event.created_at.slice(0, 19).replace("T", " ")}</li>)}</ul>)}
                           <h4>{lang === "el" ? "Απαιτούμενα δικαιολογητικά" : "Document checklist"}</h4>
                           {caseDetailState === "loading" && <p>{lang === "el" ? "Φόρτωση…" : "Loading…"}</p>}
                           {caseDetailState === "error" && <p role="alert">{lang === "el" ? "Δεν ήταν δυνατή η φόρτωση της καρτέλας." : "Could not load case details."}</p>}
