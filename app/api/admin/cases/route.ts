@@ -44,15 +44,18 @@ export async function GET(request: Request): Promise<Response> {
       ).bind(caseId).all<{ id: string; label: string; description: string | null; required: number; sort_order: number }>();
       // History table is installed by the development D1 migration 0003.
       let history: { id: string; previous_status: string; new_status: string; created_at: string }[] = [];
+      let historyAvailable = false;
       try {
         const events = await config.DB.prepare(
           "SELECT id, previous_status, new_status, created_at FROM demo_case_status_events WHERE case_id = ? ORDER BY created_at DESC, id DESC LIMIT 30"
         ).bind(caseId).all<{ id: string; previous_status: string; new_status: string; created_at: string }>();
         history = events.results;
+        historyAvailable = true;
       } catch {
         // Older environments may not have applied the optional demo migration.
+        // Signal unavailability explicitly rather than misreporting an empty history.
       }
-      return new Response(JSON.stringify({ case: item, requirements: requirements.results, history }), { status: 200, headers });
+      return new Response(JSON.stringify({ case: item, requirements: requirements.results, history, historyAvailable }), { status: 200, headers });
     }
     const query = (params.get("q") ?? "").trim();
     const offsetText = params.get("offset") ?? "0";
