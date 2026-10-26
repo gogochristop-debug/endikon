@@ -162,6 +162,14 @@ export async function PATCH(request: Request): Promise<Response> {
     }
     const id = body.id as string;
     const status = body.status as string;
+    // Fail closed: the D1 audit table and its trigger must both be installed.
+    const auditSchema = await config.DB.prepare(
+      "SELECT type, name FROM sqlite_master WHERE (type = 'table' AND name = 'demo_case_status_events') OR (type = 'trigger' AND name = 'trg_demo_case_status_history')"
+    ).all<{ type: string; name: string }>();
+    if (!auditSchema.results.some(row => row.type === "table" && row.name === "demo_case_status_events") ||
+        !auditSchema.results.some(row => row.type === "trigger" && row.name === "trg_demo_case_status_history")) {
+      return new Response(JSON.stringify({ error: "Audit history unavailable; apply development migration 0003" }), { status: 503, headers });
+    }
     const result = await config.DB.prepare(
       "UPDATE client_cases SET status = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ? AND client_user_id = ? AND deleted_at IS NULL"
     ).bind(status, id, "demo-fictional-client").run() as { meta?: { changes?: number } };
