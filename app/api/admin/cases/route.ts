@@ -50,7 +50,11 @@ export async function GET(request: Request): Promise<Response> {
           "SELECT id, previous_status, new_status, created_at FROM demo_case_status_events WHERE case_id = ? ORDER BY created_at DESC, id DESC LIMIT 30"
         ).bind(caseId).all<{ id: string; previous_status: string; new_status: string; created_at: string }>();
         history = events.results;
-        historyAvailable = true;
+        const auditSchema = await config.DB.prepare(
+          "SELECT type, name FROM sqlite_master WHERE (type = 'table' AND name = 'demo_case_status_events') OR (type = 'trigger' AND name = 'trg_demo_case_status_history')"
+        ).all<{ type: string; name: string }>();
+        historyAvailable = auditSchema.results.some(row => row.type === "table" && row.name === "demo_case_status_events") &&
+          auditSchema.results.some(row => row.type === "trigger" && row.name === "trg_demo_case_status_history");
       } catch {
         // Older environments may not have applied the optional demo migration.
         // Signal unavailability explicitly rather than misreporting an empty history.
