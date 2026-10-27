@@ -118,7 +118,7 @@ export function Website({
   const [caseStatusSaving, setCaseStatusSaving] = useState(false);
   const [caseStatusError, setCaseStatusError] = useState(false);
   async function updateDemoCaseStatus(status: string) {
-    if (!selectedCase || caseStatusSaving) return;
+    if (!selectedCase || caseStatusSaving || !caseHistoryAvailable) return;
     setCaseStatusSaving(true);
     setCaseStatusError(false);
     try {
@@ -667,7 +667,7 @@ export function Website({
                           </div>
                           <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
                             <label htmlFor="demo-case-status">{lang === "el" ? "Κατάσταση" : "Status"}</label>
-                            <select id="demo-case-status" value={selectedCase.status} disabled={caseStatusSaving} onChange={event => void updateDemoCaseStatus(event.target.value)}>
+                            <select id="demo-case-status" value={selectedCase.status} disabled={caseStatusSaving || caseDetailState !== "ready" || !caseHistoryAvailable} onChange={event => void updateDemoCaseStatus(event.target.value)}>
                               <option value="open">{lang === "el" ? "Ανοιχτή" : "Open"}</option>
                               <option value="waiting_documents">{lang === "el" ? "Αναμονή δικαιολογητικών" : "Waiting for documents"}</option>
                               <option value="in_review">{lang === "el" ? "Υπό εξέταση" : "In review"}</option>
