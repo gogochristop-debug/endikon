@@ -518,7 +518,7 @@ export function Website({
         </div>
       </header>
       {dashboard ? (
-        <div className="dashboard-shell">
+        <div className="dashboard-shell redesigned-workspace">
           <aside className="sidebar">
             <span className="eyebrow">
               {isAdmin
@@ -570,7 +570,7 @@ export function Website({
               </div>
             </div>
           </aside>
-          <main id="main-content" className="dashboard-main">
+          <main id="main-content" className="dashboard-main redesigned-main">
             <div className="dashboard-top">
               <span className="eyebrow">
                 {isAdmin
@@ -985,6 +985,21 @@ export function Website({
                   </Link>
                 </div>
                 {cards()}
+              </section>
+              <section className="experience-section section" aria-labelledby="experience-heading">
+                <div className="experience-intro">
+                  <span className="eyebrow">ENDIKON / ${lang === "el" ? "Η ΠΡΟΣΕΓΓΙΣΗ ΜΑΣ" : "OUR APPROACH"}</span>
+                  <h2 id="experience-heading">${lang === "el" ? "Μια πιο καθαρή διαδρομή για κάθε νομικό ζήτημα." : "A clearer path through every legal matter."}</h2>
+                  <p>${lang === "el" ? "Ανακαλύψτε τις διαθέσιμες υπηρεσίες, περιγράψτε το αίτημά σας και ενημερωθείτε για τα επόμενα βήματα. Η ηλεκτρονική υποβολή αιτημάτων παραμένει σε δοκιμαστική λειτουργία." : "Explore the available services, outline your enquiry and understand the next steps. Online enquiry submission remains in demonstration mode."}</p>
+                  <Link href={href("services")} className="button secondary">${lang === "el" ? "Δείτε τις υπηρεσίες" : "Explore services"} <ArrowUpRight size={17} /></Link>
+                </div>
+                <div className="experience-points">
+                  {[
+                    [lang === "el" ? "01 / Εξερεύνηση" : "01 / Explore", lang === "el" ? "Επιλέξτε την υπηρεσία που ανταποκρίνεται στην ανάγκη σας." : "Find the service that fits your needs."],
+                    [lang === "el" ? "02 / Κατανόηση" : "02 / Understand", lang === "el" ? "Δείτε το αντικείμενο και τις βασικές πληροφορίες κάθε υπηρεσίας." : "Review the scope and key information for each service."],
+                    [lang === "el" ? "03 / Επόμενα βήματα" : "03 / Next steps", lang === "el" ? "Ενημερωθείτε για τη διαδικασία, χωρίς να καταχωρίζετε πραγματικά δεδομένα στη δοκιμαστική φόρμα." : "Learn about the process without entering real data in the demo form."]
+                  ].map(([heading, description]) => <div className="experience-point" key={heading}><h3>{heading}</h3><p>{description}</p></div>)}
+                </div>
               </section>
               <section className="process section">
                 <span className="eyebrow">{t.processTag}</span>
