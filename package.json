@@ -14,7 +14,8 @@
     "deploy:cloudflare": "opennextjs-cloudflare deploy",
     "check:cloudflare": "wrangler deploy --dry-run",
     "typegen:cloudflare": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
-    "smoke:cloudflare": "SMOKE_BASE_URL=http://localhost:8787 node scripts/smoke.mjs"
+    "smoke:cloudflare": "SMOKE_BASE_URL=http://localhost:8787 node scripts/smoke.mjs",
+    "test:audit": "node --test scripts/test-audit-contract.mjs"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",
