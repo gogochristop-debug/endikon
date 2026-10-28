@@ -44,3 +44,12 @@ test("status writes only target fictional cases and skip unchanged status", () =
   assert.match(patch, /unchanged:\s*true/);
   assert.match(patch, /SELECT status FROM client_cases WHERE id = \?/);
 });
+
+test("demo list, count and detail reads exclude non-fictional cases", () => {
+  const get = casesRoute.slice(casesRoute.indexOf("export async function GET"), casesRoute.indexOf("export async function POST"));
+  assert.match(get, /WHERE id = \? AND client_user_id = \? AND title LIKE 'DEMO — %'/);
+  assert.match(get, /const where = "deleted_at IS NULL AND client_user_id = \? AND title LIKE 'DEMO — %'/);
+  assert.match(get, /COUNT\(\*\) AS total FROM client_cases WHERE/);
+  assert.match(get, /\.bind\("demo-fictional-client", pattern\)/);
+  assert.match(get, /\.bind\("demo-fictional-client", pattern, offset\)/);
+});
