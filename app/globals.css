@@ -1620,3 +1620,8 @@ input::placeholder, textarea::placeholder { color: #65736b; }
   .dashboard-main h1 { font-size: 2rem; }
   .header-inner { padding-block: 12px; }
 }
+
+/* Workspace information architecture */
+.sidebar-section-label { color: var(--muted); font-size: .72rem; font-weight: 750; letter-spacing: .12em; padding: 6px 14px 8px; }
+.sidebar > a[aria-current="page"] { background: #d6e7da; color: #174d3f; font-weight: 700; }
+@media (max-width: 800px) { .sidebar-section-label { display: none; } }
