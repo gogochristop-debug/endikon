@@ -175,9 +175,15 @@ export async function PATCH(request: Request): Promise<Response> {
       return new Response(JSON.stringify({ error: "Audit history unavailable; apply development migration 0003" }), { status: 503, headers });
     }
     const result = await config.DB.prepare(
-      "UPDATE client_cases SET status = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ? AND client_user_id = ? AND deleted_at IS NULL"
-    ).bind(status, id, "demo-fictional-client").run() as { meta?: { changes?: number } };
-    if (!result.meta?.changes) return new Response(JSON.stringify({ error: "Demo case not found" }), { status: 404, headers });
+      "UPDATE client_cases SET status = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ? AND client_user_id = ? AND title LIKE 'DEMO — %' AND deleted_at IS NULL AND status <> ?"
+    ).bind(status, id, "demo-fictional-client", status).run() as { meta?: { changes?: number } };
+    if (!result.meta?.changes) {
+      const existing = await config.DB.prepare(
+        "SELECT status FROM client_cases WHERE id = ? AND client_user_id = ? AND title LIKE 'DEMO — %' AND deleted_at IS NULL"
+      ).bind(id, "demo-fictional-client").all<{ status: string }>();
+      if (!existing.results.length) return new Response(JSON.stringify({ error: "Demo case not found" }), { status: 404, headers });
+      return new Response(JSON.stringify({ id, status: existing.results[0].status, unchanged: true }), { status: 200, headers });
+    }
     return new Response(JSON.stringify({ id, status }), { status: 200, headers });
   } catch {
     return new Response(JSON.stringify({ error: "Could not update demo case" }), { status: 503, headers });
