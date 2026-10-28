@@ -1701,3 +1701,8 @@ body { background: var(--paper); color: var(--ink); }
   .redesigned-main { padding: 26px 5% 60px; }
 }
 @media (max-width: 480px) { .hero h1 { font-size: clamp(2.7rem,10vw,3.5rem); } .experience-section { padding-block: 50px; } }
+
+/* Distinct demo workspace states */
+.workspace-empty-state { display: grid; justify-items: start; gap: 14px; padding: clamp(24px,4vw,52px); background: #f6f8f3; border: 1px dashed #bdcbbd; border-radius: 10px; }
+.workspace-empty-state h3 { color: #103e36; font-size: 1.3rem; }
+.workspace-empty-state p { max-width: 58ch; color: #566c62; }
