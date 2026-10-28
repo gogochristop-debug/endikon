@@ -36,3 +36,11 @@ test("case detail exposes history readiness and limits audit records", () => {
   assert.match(get, /LIMIT 30/);
   assert.match(get, /client_user_id = \?/);
 });
+
+test("status writes only target fictional cases and skip unchanged status", () => {
+  const patch = casesRoute.slice(casesRoute.indexOf("export async function PATCH"));
+  assert.match(patch, /UPDATE client_cases SET status[\s\S]*?title LIKE 'DEMO — %'/);
+  assert.match(patch, /AND status <> \?/);
+  assert.match(patch, /unchanged:\s*true/);
+  assert.match(patch, /SELECT status FROM client_cases WHERE id = \?/);
+});
