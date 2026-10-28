@@ -85,7 +85,7 @@ export function Website({
   const [adminQuoteOffset, setAdminQuoteOffset] = useState(0);
   const [adminQuotesState, setAdminQuotesState] = useState<"loading" | "ready" | "error">("loading");
   useEffect(() => {
-    if (!route.startsWith("admin")) return;
+    if (route !== "admin") return;
     const controller = new AbortController();
     setAdminQuotesState("loading");
     const params = new URLSearchParams({ q: search.trim().slice(0, 100), offset: String(adminQuoteOffset) });
@@ -584,13 +584,13 @@ export function Website({
               </span>
               <span className="avatar">{isAdmin ? "E" : "AK"}</span>
             </div>
-            <h1>{isAdmin ? t.adminTitle : t.welcome}</h1>
+            <h1>{isAdmin ? (route === "admin/cases" ? t.cases : route === "admin/clients" ? t.clients : route === "admin/quotes" ? t.quoteStatus : t.adminTitle) : t.welcome}</h1>
             <p>{isAdmin ? t.adminIntro : t.dashboardIntro}</p>
             <div className="demo-banner">
               <ShieldCheck size={18} />
               {t.demo}
             </div>
-            <div className="stats">
+            {(route === "admin" || !isAdmin) && <div className="stats">
               {[
                 isAdmin ? t.requests : t.active,
                 isAdmin ? t.clients : t.pending,
@@ -606,7 +606,7 @@ export function Website({
                     : i === 2 ? t.quoteDesc : lang === "el" ? "Δοκιμαστικός χώρος εργασίας" : "Demonstration workspace"}</small>
                 </div>
               ))}
-            </div>
+            </div>}
             {isAdmin ? (
               <>
                 <div className="panel">
@@ -620,13 +620,13 @@ export function Website({
                             ? t.cases
                             : t.requests}
                     </h2>
-                    <input
+                    {(route === "admin" || route === "admin/cases") && <input
                       className="search"
                       aria-label={lang === "el" ? "Αναζήτηση" : "Search"}
                       placeholder={lang === "el" ? "Αναζήτηση…" : "Search…"}
                       value={search}
                       onChange={(e) => { setSearch(e.target.value); setAdminQuoteOffset(0); setAdminCaseOffset(0); }}
-                    />
+                    />}
                   </div>
                   {route === "admin/cases" ? (
                     <>
@@ -742,7 +742,7 @@ export function Website({
                         </div>
                       )}
                     </>
-                  ) : (
+                  ) : route === "admin" ? (
                   <div className="table-wrap">
                     <table>
                       <thead>
@@ -773,6 +773,13 @@ export function Website({
                       </tbody>
                     </table>
                   </div>
+                  ) : (
+                    <div className="workspace-empty-state" role="status">
+                      <FolderOpen size={28} aria-hidden="true" />
+                      <h3>{route === "admin/clients" ? (lang === "el" ? "Διαχείριση πελατών" : "Client management") : (lang === "el" ? "Διαχείριση προσφορών" : "Quote management")}</h3>
+                      <p>{lang === "el" ? "Η ενότητα βρίσκεται σε δοκιμαστικό στάδιο. Δεν εμφανίζονται εδώ αιτήματα από άλλες ενότητες." : "This section is in demonstration mode. Requests from other sections are not displayed here."}</p>
+                      <Link href={href("admin")} className="text-link">{lang === "el" ? "Επιστροφή στην επισκόπηση" : "Back to overview"} <ArrowRight size={16} /></Link>
+                    </div>
                   )}
                   {route === "admin" && adminQuotesState === "ready" && adminQuoteTotal > 0 && (
                     <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 16 }}>
