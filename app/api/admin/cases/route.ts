@@ -35,7 +35,7 @@ export async function GET(request: Request): Promise<Response> {
         return new Response(JSON.stringify({ error: "Invalid case ID" }), { status: 400, headers });
       }
       const selected = await config.DB.prepare(
-        "SELECT id, title, status, created_at, updated_at FROM client_cases WHERE id = ? AND client_user_id = ? AND deleted_at IS NULL"
+        "SELECT id, title, status, created_at, updated_at FROM client_cases WHERE id = ? AND client_user_id = ? AND title LIKE 'DEMO — %' AND deleted_at IS NULL"
       ).bind(caseId, "demo-fictional-client").all<CaseRow>();
       const item = selected.results[0];
       if (!item) return new Response(JSON.stringify({ error: "Demo case not found" }), { status: 404, headers });
@@ -68,12 +68,12 @@ export async function GET(request: Request): Promise<Response> {
       return new Response(JSON.stringify({ error: "Invalid filters" }), { status: 400, headers });
     }
     const pattern = "%" + query.replace(/[\\%_]/g, "\\$&") + "%";
-    const where = "deleted_at IS NULL AND title LIKE ? ESCAPE '\\'";
-    const count = await config.DB.prepare("SELECT COUNT(*) AS total FROM client_cases WHERE " + where).bind(pattern).all<{ total: number }>();
+    const where = "deleted_at IS NULL AND client_user_id = ? AND title LIKE 'DEMO — %' AND title LIKE ? ESCAPE '\\'";
+    const count = await config.DB.prepare("SELECT COUNT(*) AS total FROM client_cases WHERE " + where).bind("demo-fictional-client", pattern).all<{ total: number }>();
     const rows = await config.DB.prepare(
       "SELECT id, title, status, created_at, updated_at FROM client_cases WHERE " + where +
       " ORDER BY created_at DESC, id DESC LIMIT 25 OFFSET ?"
-    ).bind(pattern, offset).all<CaseRow>();
+    ).bind("demo-fictional-client", pattern, offset).all<CaseRow>();
     return new Response(JSON.stringify({ cases: rows.results, total: Number(count.results[0]?.total ?? 0), limit: 25, offset }), { status: 200, headers });
   } catch {
     return new Response(JSON.stringify({ error: "Service unavailable" }), { status: 503, headers });
