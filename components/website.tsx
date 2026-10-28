@@ -529,10 +529,10 @@ export function Website({
                   ? "ENDIKON ΠΕΛΑΤΗΣ"
                   : "ENDIKON CLIENT"}
             </span>
+            {isAdmin && <span className="sidebar-section-label">{lang === "el" ? "ΔΙΑΧΕΙΡΙΣΗ" : "MANAGEMENT"}</span>}
             {(isAdmin
               ? [
                   [t.dashboard, "admin", LayoutDashboard],
-                  [t.requests, "admin", Mail],
                   [t.clients, "admin/clients", Users],
                   [t.cases, "admin/cases", FolderOpen],
                   [t.quoteStatus, "admin/quotes", FileText],
@@ -549,6 +549,7 @@ export function Website({
               return (
                 <Link
                   className={route === path ? "selected" : ""}
+                  aria-current={route === path ? "page" : undefined}
                   key={i}
                   href={href(path as string)}
                 >
@@ -579,7 +580,7 @@ export function Website({
                   : lang === "el"
                     ? "ΧΩΡΟΣ ΠΕΛΑΤΗ"
                     : "CLIENT SPACE"}{" "}
-                / {t.dashboard}
+                / {isAdmin ? (route === "admin/cases" ? t.cases : route === "admin/clients" ? t.clients : route === "admin/quotes" ? t.quoteStatus : t.dashboard) : t.dashboard}
               </span>
               <span className="avatar">{isAdmin ? "E" : "AK"}</span>
             </div>
@@ -654,7 +655,7 @@ export function Website({
                             ) : adminCases.length === 0 ? (
                               <tr><td colSpan={4}>{lang === "el" ? "Δεν υπάρχουν υποθέσεις στη δοκιμαστική βάση." : "No cases in the development database."}</td></tr>
                             ) : adminCases.map(item => (
-                              <tr key={item.id}><td><strong>{item.title}</strong></td><td><span className="pill">{item.status}</span></td><td>{item.created_at.slice(0, 10)}</td><td><button type="button" onClick={() => void viewDemoCase(item)}>{lang === "el" ? "Προβολή" : "View"}</button></td></tr>
+                              <tr key={item.id}><td><strong>{item.title}</strong></td><td><span className="pill">{({ open: lang === "el" ? "Ανοιχτή" : "Open", waiting_documents: lang === "el" ? "Αναμονή δικαιολογητικών" : "Waiting for documents", in_review: lang === "el" ? "Υπό εξέταση" : "In review", completed: lang === "el" ? "Ολοκληρωμένη" : "Completed", archived: lang === "el" ? "Αρχειοθετημένη" : "Archived" } as Record<string, string>)[item.status] ?? item.status}</span></td><td>{item.created_at.slice(0, 10)}</td><td><button type="button" onClick={() => void viewDemoCase(item)}>{lang === "el" ? "Προβολή" : "View"}</button></td></tr>
                             ))}
                           </tbody>
                         </table>
