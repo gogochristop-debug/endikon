@@ -85,7 +85,7 @@ export function Website({
   const [adminQuoteOffset, setAdminQuoteOffset] = useState(0);
   const [adminQuotesState, setAdminQuotesState] = useState<"loading" | "ready" | "error">("loading");
   useEffect(() => {
-    if (route !== "admin") return;
+    if (route !== "admin" && route !== "admin/quotes") return;
     const controller = new AbortController();
     setAdminQuotesState("loading");
     const params = new URLSearchParams({ q: search.trim().slice(0, 100), offset: String(adminQuoteOffset) });
@@ -781,6 +781,38 @@ export function Website({
                       </tbody>
                     </table>
                   </div>
+                  ) : route === "admin/quotes" ? (
+                    <div className="quote-workspace">
+                      <p className="quote-workspace-notice">{lang === "el" ? "Ασφαλής προβολή αιτημάτων από τη δοκιμαστική βάση. Δεν υποστηρίζεται ακόμη επεξεργασία ή αποστολή προσφορών." : "Secure read-only enquiries from the development database. Editing or sending quotes is not yet supported."}</p>
+                      <div className="quote-workspace-summary">
+                        <span>{lang === "el" ? "Σύνολο αιτημάτων" : "Total enquiries"}</span>
+                        <strong>{adminQuotesState === "ready" ? adminQuoteTotal : "—"}</strong>
+                      </div>
+                      <label className="quote-workspace-filter" htmlFor="admin-quote-search">{lang === "el" ? "Αναζήτηση αιτημάτων" : "Search enquiries"}
+                        <input id="admin-quote-search" className="search" type="search" value={search} placeholder={lang === "el" ? "Όνομα, email ή υπηρεσία" : "Name, email or service"} onChange={e => { setSearch(e.target.value); setAdminQuoteOffset(0); }} />
+                      </label>
+                      <div className="table-wrap">
+                        <table>
+                          <thead><tr><th>{t.name}</th><th>{t.service}</th><th>{t.quoteStatus}</th><th>{lang === "el" ? "Ημερομηνία" : "Date"}</th></tr></thead>
+                          <tbody>
+                            {adminQuotesState === "loading" ? <tr><td colSpan={4}>{lang === "el" ? "Φόρτωση αιτημάτων…" : "Loading enquiries…"}</td></tr>
+                            : adminQuotesState === "error" ? <tr><td colSpan={4} role="alert">{lang === "el" ? "Η ασφαλής φόρτωση απέτυχε. Ανανεώστε τη σελίδα." : "Secure loading failed. Please refresh."}</td></tr>
+                            : adminQuotes.length === 0 ? <tr><td colSpan={4}>{lang === "el" ? "Δεν βρέθηκαν αιτήματα." : "No enquiries found."}</td></tr>
+                            : adminQuotes.map(quote => <tr key={quote.id}>
+                                <td><strong>{quote.name}</strong><small>{quote.email}</small></td>
+                                <td>{quote.service}</td>
+                                <td><span className="pill">{quote.status}</span></td>
+                                <td>{quote.created_at.slice(0, 10)}</td>
+                              </tr>)}
+                          </tbody>
+                        </table>
+                      </div>
+                      {adminQuotesState === "ready" && adminQuoteTotal > 0 && <div className="quote-workspace-pagination">
+                        <button type="button" disabled={adminQuoteOffset === 0} onClick={() => setAdminQuoteOffset(Math.max(0, adminQuoteOffset - 25))}>{lang === "el" ? "Προηγούμενα" : "Previous"}</button>
+                        <span>{adminQuoteOffset + 1}–{Math.min(adminQuoteOffset + 25, adminQuoteTotal)} / {adminQuoteTotal}</span>
+                        <button type="button" disabled={adminQuoteOffset + 25 >= adminQuoteTotal} onClick={() => setAdminQuoteOffset(adminQuoteOffset + 25)}>{lang === "el" ? "Επόμενα" : "Next"}</button>
+                      </div>}
+                    </div>
                   ) : (
                     <div className="workspace-empty-state" role="status">
                       <FolderOpen size={28} aria-hidden="true" />
