@@ -585,7 +585,15 @@ export function Website({
               <span className="avatar">{isAdmin ? "E" : "AK"}</span>
             </div>
             <h1>{isAdmin ? (route === "admin/cases" ? t.cases : route === "admin/clients" ? t.clients : route === "admin/quotes" ? t.quoteStatus : t.adminTitle) : t.welcome}</h1>
-            <p>{isAdmin ? t.adminIntro : t.dashboardIntro}</p>
+            <p>{isAdmin
+              ? route === "admin/cases"
+                ? (lang === "el" ? "Διαχείριση δοκιμαστικών υποθέσεων και απαιτούμενων δικαιολογητικών." : "Manage demo cases and document requirements.")
+                : route === "admin/clients"
+                  ? (lang === "el" ? "Η ενότητα πελατών βρίσκεται σε δοκιμαστική ανάπτυξη." : "Client management is under demo development.")
+                  : route === "admin/quotes"
+                    ? (lang === "el" ? "Η διαχείριση προσφορών βρίσκεται σε δοκιμαστική ανάπτυξη." : "Quote management is under demo development.")
+                    : t.adminIntro
+              : t.dashboardIntro}</p>
             <div className="demo-banner">
               <ShieldCheck size={18} />
               {t.demo}
@@ -793,7 +801,7 @@ export function Website({
                     </div>
                   )}
                 </div>
-                <div className="panel">
+                {route === "admin" && <div className="panel">
                   <h2>{t.prepare}</h2>
                   <form
                     onSubmit={(e) => {
@@ -818,7 +826,7 @@ export function Website({
                       <ArrowRight size={16} />
                     </button>
                   </form>
-                </div>
+                </div>}
               </>
             ) : (
               <>
