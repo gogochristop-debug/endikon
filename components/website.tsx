@@ -79,6 +79,32 @@ export function Website({
   const [notice, setNotice] = useState("");
   const [selected, setSelected] = useState(initialService ?? services[0].slug);
   const [search, setSearch] = useState("");
+  type AdminClient = { id: string; display_name: string; email: string | null; phone: string | null; status: string; created_at: string };
+  const [adminClients, setAdminClients] = useState<AdminClient[]>([]);
+  const [adminClientTotal, setAdminClientTotal] = useState(0);
+  const [adminClientOffset, setAdminClientOffset] = useState(0);
+  const [adminClientsState, setAdminClientsState] = useState<"loading" | "ready" | "error">("loading");
+  useEffect(() => {
+    if (route !== "admin/clients") return;
+    const controller = new AbortController();
+    setAdminClientsState("loading");
+    const params = new URLSearchParams({ q: search.trim().slice(0, 100), offset: String(adminClientOffset) });
+    fetch(`/api/admin/clients?${params}`, { credentials: "same-origin", cache: "no-store", signal: controller.signal })
+      .then(async response => {
+        if (!response.ok) throw new Error("CRM unavailable");
+        const payload: unknown = await response.json();
+        if (!payload || typeof payload !== "object" || !("clients" in payload) || !Array.isArray(payload.clients) || !("total" in payload) || typeof payload.total !== "number") throw new Error("Invalid CRM response");
+        return { clients: payload.clients as AdminClient[], total: payload.total as number };
+      })
+      .then(({ clients, total }) => {
+        if (controller.signal.aborted) return;
+        setAdminClients(clients);
+        setAdminClientTotal(total);
+        setAdminClientsState("ready");
+      })
+      .catch(() => { if (!controller.signal.aborted) setAdminClientsState("error"); });
+    return () => controller.abort();
+  }, [route, search, adminClientOffset]);
   type AdminQuote = { id: string; created_at: string; name: string; email: string; service: string; status: string };
   const [adminQuotes, setAdminQuotes] = useState<AdminQuote[]>([]);
   const [adminQuoteTotal, setAdminQuoteTotal] = useState(0);
@@ -781,6 +807,28 @@ export function Website({
                       </tbody>
                     </table>
                   </div>
+                  ) : route === "admin/clients" ? (
+                    <div className="quote-workspace">
+                      <p className="quote-workspace-notice">{lang === "el" ? "Ασφαλής προβολή πελατών. Η δημιουργία και επεξεργασία δεν έχουν ενεργοποιηθεί." : "Secure read-only client directory. Creating and editing clients is not enabled."}</p>
+                      <div className="quote-workspace-summary"><span>{lang === "el" ? "Σύνολο πελατών" : "Total clients"}</span><strong>{adminClientsState === "ready" ? adminClientTotal : "—"}</strong></div>
+                      <label className="quote-workspace-filter" htmlFor="admin-client-search">{lang === "el" ? "Αναζήτηση πελατών" : "Search clients"}
+                        <input id="admin-client-search" className="search" type="search" value={search} placeholder={lang === "el" ? "Όνομα, email ή τηλέφωνο" : "Name, email or phone"} onChange={e => { setSearch(e.target.value); setAdminClientOffset(0); }} />
+                      </label>
+                      <div className="table-wrap"><table>
+                        <thead><tr><th>{t.name}</th><th>Email</th><th>{lang === "el" ? "Τηλέφωνο" : "Phone"}</th><th>{lang === "el" ? "Κατάσταση" : "Status"}</th></tr></thead>
+                        <tbody>
+                          {adminClientsState === "loading" ? <tr><td colSpan={4}>{lang === "el" ? "Φόρτωση πελατών…" : "Loading clients…"}</td></tr>
+                          : adminClientsState === "error" ? <tr><td colSpan={4} role="alert">{lang === "el" ? "Η ασφαλής φόρτωση απέτυχε. Ελέγξτε ότι έχει εφαρμοστεί η migration 0006." : "Secure loading failed. Check that migration 0006 is applied."}</td></tr>
+                          : adminClients.length === 0 ? <tr><td colSpan={4}>{lang === "el" ? "Δεν υπάρχουν πελάτες." : "No clients found."}</td></tr>
+                          : adminClients.map(client => <tr key={client.id}><td><strong>{client.display_name}</strong></td><td>{client.email ?? "—"}</td><td>{client.phone ?? "—"}</td><td><span className="pill">{client.status}</span></td></tr>)}
+                        </tbody>
+                      </table></div>
+                      {adminClientsState === "ready" && adminClientTotal > 0 && <div className="quote-workspace-pagination">
+                        <button type="button" disabled={adminClientOffset === 0} onClick={() => setAdminClientOffset(Math.max(0, adminClientOffset - 25))}>{lang === "el" ? "Προηγούμενα" : "Previous"}</button>
+                        <span>{adminClientOffset + 1}–{Math.min(adminClientOffset + 25, adminClientTotal)} / {adminClientTotal}</span>
+                        <button type="button" disabled={adminClientOffset + 25 >= adminClientTotal} onClick={() => setAdminClientOffset(adminClientOffset + 25)}>{lang === "el" ? "Επόμενα" : "Next"}</button>
+                      </div>}
+                    </div>
                   ) : route === "admin/quotes" ? (
                     <div className="quote-workspace">
                       <p className="quote-workspace-notice">{lang === "el" ? "Ασφαλής προβολή αιτημάτων από τη δοκιμαστική βάση. Δεν υποστηρίζεται ακόμη επεξεργασία ή αποστολή προσφορών." : "Secure read-only enquiries from the development database. Editing or sending quotes is not yet supported."}</p>
