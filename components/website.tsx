@@ -79,6 +79,32 @@ export function Website({
   const [notice, setNotice] = useState("");
   const [selected, setSelected] = useState(initialService ?? services[0].slug);
   const [search, setSearch] = useState("");
+  const [clientName, setClientName] = useState("");
+  const [clientEmail, setClientEmail] = useState("");
+  const [clientPhone, setClientPhone] = useState("");
+  const [clientSaving, setClientSaving] = useState(false);
+  const [clientMessage, setClientMessage] = useState("");
+  const [clientReload, setClientReload] = useState(0);
+  async function createAdminClient(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (clientSaving) return;
+    setClientSaving(true);
+    setClientMessage("");
+    try {
+      const response = await fetch("/api/admin/clients", {
+        method: "POST", credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ display_name: clientName.trim(), email: clientEmail.trim(), phone: clientPhone.trim() }),
+      });
+      if (!response.ok) throw new Error("Client create failed");
+      setClientName(""); setClientEmail(""); setClientPhone("");
+      setClientMessage(lang === "el" ? "Ο πελάτης καταχωρίστηκε." : "Client created.");
+      setAdminClientOffset(0);
+      setClientReload(value => value + 1);
+    } catch {
+      setClientMessage(lang === "el" ? "Η αποθήκευση απέτυχε. Ελέγξτε τα στοιχεία και τη σύνδεση." : "Could not save. Check details and connection.");
+    } finally { setClientSaving(false); }
+  }
   type AdminClient = { id: string; display_name: string; email: string | null; phone: string | null; status: string; created_at: string };
   const [adminClients, setAdminClients] = useState<AdminClient[]>([]);
   const [adminClientTotal, setAdminClientTotal] = useState(0);
@@ -104,7 +130,7 @@ export function Website({
       })
       .catch(() => { if (!controller.signal.aborted) setAdminClientsState("error"); });
     return () => controller.abort();
-  }, [route, search, adminClientOffset]);
+  }, [route, search, adminClientOffset, clientReload]);
   type AdminQuote = { id: string; created_at: string; name: string; email: string; service: string; status: string };
   const [adminQuotes, setAdminQuotes] = useState<AdminQuote[]>([]);
   const [adminQuoteTotal, setAdminQuoteTotal] = useState(0);
@@ -809,7 +835,15 @@ export function Website({
                   </div>
                   ) : route === "admin/clients" ? (
                     <div className="quote-workspace">
-                      <p className="quote-workspace-notice">{lang === "el" ? "Ασφαλής προβολή πελατών. Η δημιουργία και επεξεργασία δεν έχουν ενεργοποιηθεί." : "Secure read-only client directory. Creating and editing clients is not enabled."}</p>
+                      <p className="quote-workspace-notice">{lang === "el" ? "Εσωτερικό CRM διαχειριστή. Καταχωρίστε στοιχεία μόνο αφού ολοκληρωθεί ο έλεγχος προστασίας προσωπικών δεδομένων." : "Internal admin CRM. Enter personal data only after privacy review is completed."}</p>
+                      <form className="crm-create-form" onSubmit={createAdminClient}>
+                        <h3>{lang === "el" ? "Νέος πελάτης" : "New client"}</h3>
+                        <label>{t.name}<input required maxLength={160} value={clientName} onChange={e => setClientName(e.target.value)} /></label>
+                        <label>Email<input type="email" maxLength={254} value={clientEmail} onChange={e => setClientEmail(e.target.value)} /></label>
+                        <label>{lang === "el" ? "Τηλέφωνο" : "Phone"}<input type="tel" maxLength={40} value={clientPhone} onChange={e => setClientPhone(e.target.value)} /></label>
+                        <button type="submit" disabled={clientSaving}>{clientSaving ? (lang === "el" ? "Αποθήκευση…" : "Saving…") : (lang === "el" ? "Δημιουργία πελάτη" : "Create client")}</button>
+                        {clientMessage && <p role="status">{clientMessage}</p>}
+                      </form>
                       <div className="quote-workspace-summary"><span>{lang === "el" ? "Σύνολο πελατών" : "Total clients"}</span><strong>{adminClientsState === "ready" ? adminClientTotal : "—"}</strong></div>
                       <label className="quote-workspace-filter" htmlFor="admin-client-search">{lang === "el" ? "Αναζήτηση πελατών" : "Search clients"}
                         <input id="admin-client-search" className="search" type="search" value={search} placeholder={lang === "el" ? "Όνομα, email ή τηλέφωνο" : "Name, email or phone"} onChange={e => { setSearch(e.target.value); setAdminClientOffset(0); }} />
