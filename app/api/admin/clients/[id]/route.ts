@@ -54,16 +54,17 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     if (!existing.results.length) return reply("Client not found", 404);
     if (existing.results[0].updated_at !== updatedAt) return reply("Client modified by another session", 409);
     // D1 batch is transactional; the audit row and update commit together.
-    // A conditional update prevents stale edits even if another request races.
+    // A conditional update prevents stale edits; audit is inserted only when UPDATE changed one row.
     const nextVersion = new Date().toISOString() + "-" + crypto.randomUUID();
-    // SQLite datetime is stored as text; use a unique monotonic-enough token for optimistic concurrency.
+    // Unique revision token supports optimistic concurrency without a schema migration.
     // The write and audit are grouped; an additional existence check is needed for a racing edit.
     await config.DB.batch([
       config.DB.prepare("UPDATE crm_clients SET display_name = ?, email = ?, phone = ?, updated_at = ? WHERE id = ? AND updated_at = ? AND deleted_at IS NULL").bind(name, email || null, phone || null, nextVersion, id, updatedAt),
-      config.DB.prepare("INSERT INTO crm_client_audit (id, client_id, action, actor_id) VALUES (?, ?, 'updated', ?)").bind(crypto.randomUUID(), id, config.ACCESS_ADMIN_EMAIL.toLowerCase()),
+      config.DB.prepare("INSERT INTO crm_client_audit (id, client_id, action, actor_id) SELECT ?, ?, 'updated', ? WHERE changes() = 1").bind(crypto.randomUUID(), id, config.ACCESS_ADMIN_EMAIL.toLowerCase()),
     ]);
     const refreshed = await config.DB.prepare("SELECT id, display_name, email, phone, status, created_at, updated_at FROM crm_clients WHERE id = ? AND deleted_at IS NULL").bind(id).all();
     if (!refreshed.results.length) return reply("Client not found", 404);
+    if ((refreshed.results[0] as { updated_at: string }).updated_at !== nextVersion) return reply("Client modified by another session", 409);
     return new Response(JSON.stringify({ client: refreshed.results[0] }), { status: 200, headers });
   } catch {
     return reply("Could not update client", 503);
