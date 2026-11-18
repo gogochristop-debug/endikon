@@ -15,6 +15,35 @@ const headers = { "Cache-Control": "no-store", "Content-Type": "application/json
 const reply = (error: string, status: number) => new Response(JSON.stringify({ error }), { status, headers });
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+/** Read-only CRM detail. Cases are deliberately restricted to fictional DEMO records. */
+export async function GET(request: Request, context: { params: Promise<{ id: string }> }): Promise<Response> {
+  try {
+    const { env } = await getCloudflareContext();
+    const config = env as unknown as Env;
+    if (!config.ACCESS_TEAM_DOMAIN || !config.ACCESS_ADMIN_AUD || !config.ACCESS_ADMIN_EMAIL) return reply("Admin API not configured", 503);
+    const authorized = await verifyAdminAccess(request.headers.get("cf-access-jwt-assertion"), {
+      teamDomain: config.ACCESS_TEAM_DOMAIN, audience: config.ACCESS_ADMIN_AUD, adminEmail: config.ACCESS_ADMIN_EMAIL,
+    });
+    if (!authorized) return reply("Unauthorized", 401);
+    if (!config.DB) return reply("Database unavailable", 503);
+    const { id } = await context.params;
+    if (!uuid.test(id)) return reply("Invalid client ID", 400);
+    const client = await config.DB.prepare(
+      "SELECT id, display_name, email, phone, status, created_at, updated_at FROM crm_clients WHERE id = ? AND deleted_at IS NULL"
+    ).bind(id).all<{ id: string; display_name: string; email: string | null; phone: string | null; status: string; created_at: string; updated_at: string }>();
+    if (!client.results.length) return reply("Client not found", 404);
+    const cases = await config.DB.prepare(
+      "SELECT c.id, c.title, c.status, c.created_at, c.updated_at, l.linked_at FROM crm_client_case_links l JOIN client_cases c ON c.id = l.case_id WHERE l.client_id = ? AND c.deleted_at IS NULL AND c.client_user_id = ? AND c.title LIKE 'DEMO — %' ORDER BY l.linked_at DESC, c.id DESC LIMIT 25"
+    ).bind(id, "demo-fictional-client").all<{ id: string; title: string; status: string; created_at: string; updated_at: string; linked_at: string }>();
+    const history = await config.DB.prepare(
+      "SELECT action, occurred_at FROM crm_client_audit WHERE client_id = ? ORDER BY occurred_at DESC, id DESC LIMIT 25"
+    ).bind(id).all<{ action: string; occurred_at: string }>();
+    return new Response(JSON.stringify({ client: client.results[0], demoCases: cases.results, history: history.results, demoOnly: true }), { status: 200, headers });
+  } catch {
+    return reply("CRM detail unavailable", 503);
+  }
+}
+
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }): Promise<Response> {
   const url = new URL(request.url);
   if (request.headers.get("origin") !== url.origin ||

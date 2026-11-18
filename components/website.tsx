@@ -107,6 +107,27 @@ export function Website({
   }
   type AdminClient = { id: string; display_name: string; email: string | null; phone: string | null; status: string; created_at: string; updated_at: string };
   const [editingClient, setEditingClient] = useState<AdminClient | null>(null);
+  type ClientDetail = { demoCases: { id: string; title: string; status: string; linked_at: string }[]; history: { action: string; occurred_at: string }[]; demoOnly: true };
+  const [clientDetail, setClientDetail] = useState<ClientDetail | null>(null);
+  const [clientDetailState, setClientDetailState] = useState<"idle" | "loading" | "ready" | "error">("idle");
+  useEffect(() => {
+    if (route !== "admin/clients" || !editingClient) {
+      setClientDetail(null);
+      setClientDetailState("idle");
+      return;
+    }
+    const controller = new AbortController();
+    setClientDetail(null);
+    setClientDetailState("loading");
+    fetch(`/api/admin/clients/${encodeURIComponent(editingClient.id)}`, { credentials: "same-origin", cache: "no-store", signal: controller.signal })
+      .then(async response => {
+        if (!response.ok) throw new Error("Client detail unavailable");
+        return response.json() as Promise<ClientDetail>;
+      })
+      .then(detail => { if (!controller.signal.aborted) { setClientDetail(detail); setClientDetailState("ready"); } })
+      .catch(() => { if (!controller.signal.aborted) setClientDetailState("error"); });
+    return () => controller.abort();
+  }, [route, editingClient?.id, clientReload]);
   const [editName, setEditName] = useState("");
   const [editEmail, setEditEmail] = useState("");
   const [editPhone, setEditPhone] = useState("");
@@ -890,6 +911,17 @@ export function Website({
                         <button type="button" disabled={editSaving} onClick={() => { setEditingClient(null); setEditMessage(""); }}>{lang === "el" ? "Ακύρωση" : "Cancel"}</button>
                         {editMessage && <p role="alert">{editMessage}</p>}
                       </form>}
+                      {editingClient && <section className="crm-create-form" aria-label={lang === "el" ? "Ιστορικό πελάτη" : "Client history"}>
+                        <h3>{lang === "el" ? "Συνδεδεμένες δοκιμαστικές υποθέσεις" : "Linked demo cases"}</h3>
+                        {clientDetailState === "loading" && <p>{lang === "el" ? "Φόρτωση…" : "Loading…"}</p>}
+                        {clientDetailState === "error" && <p role="alert">{lang === "el" ? "Αδυναμία φόρτωσης ιστορικού." : "Could not load history."}</p>}
+                        {clientDetailState === "ready" && clientDetail && <>
+                          <p>{lang === "el" ? "Εμφανίζονται μόνο εικονικές υποθέσεις DEMO." : "Only fictional DEMO cases are displayed."}</p>
+                          {clientDetail.demoCases.length ? <ul>{clientDetail.demoCases.map(item => <li key={item.id}>{item.title} — {item.status}</li>)}</ul> : <p>{lang === "el" ? "Δεν υπάρχουν συνδεδεμένες δοκιμαστικές υποθέσεις." : "No linked demo cases."}</p>}
+                          <h3>{lang === "el" ? "Ιστορικό ενεργειών" : "Activity history"}</h3>
+                          {clientDetail.history.length ? <ul>{clientDetail.history.map((item, index) => <li key={index}>{item.action} — {item.occurred_at}</li>)}</ul> : <p>{lang === "el" ? "Δεν υπάρχουν καταχωρισμένες ενέργειες." : "No recorded activity."}</p>}
+                        </>}
+                      </section>}
                       <div className="quote-workspace-summary"><span>{lang === "el" ? "Σύνολο πελατών" : "Total clients"}</span><strong>{adminClientsState === "ready" ? adminClientTotal : "—"}</strong></div>
                       <label className="quote-workspace-filter" htmlFor="admin-client-search">{lang === "el" ? "Αναζήτηση πελατών" : "Search clients"}
                         <input id="admin-client-search" className="search" type="search" value={search} placeholder={lang === "el" ? "Όνομα, email ή τηλέφωνο" : "Name, email or phone"} onChange={e => { setSearch(e.target.value); setAdminClientOffset(0); }} />
