@@ -105,7 +105,44 @@ export function Website({
       setClientMessage(lang === "el" ? "Η αποθήκευση απέτυχε. Ελέγξτε τα στοιχεία και τη σύνδεση." : "Could not save. Check details and connection.");
     } finally { setClientSaving(false); }
   }
-  type AdminClient = { id: string; display_name: string; email: string | null; phone: string | null; status: string; created_at: string };
+  type AdminClient = { id: string; display_name: string; email: string | null; phone: string | null; status: string; created_at: string; updated_at: string };
+  const [editingClient, setEditingClient] = useState<AdminClient | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editSaving, setEditSaving] = useState(false);
+  const [editMessage, setEditMessage] = useState("");
+  function beginClientEdit(client: AdminClient) {
+    setEditingClient(client);
+    setEditName(client.display_name);
+    setEditEmail(client.email ?? "");
+    setEditPhone(client.phone ?? "");
+    setEditMessage("");
+  }
+  async function saveClientEdit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!editingClient || editSaving) return;
+    setEditSaving(true);
+    setEditMessage("");
+    try {
+      const response = await fetch(`/api/admin/clients/${encodeURIComponent(editingClient.id)}`, {
+        method: "PATCH", credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ display_name: editName.trim(), email: editEmail.trim(), phone: editPhone.trim(), updated_at: editingClient.updated_at }),
+      });
+      if (response.status === 409) {
+        setEditMessage(lang === "el" ? "Η καρτέλα άλλαξε σε άλλη συνεδρία. Ανανεώστε τη λίστα και δοκιμάστε ξανά." : "This client was changed elsewhere. Refresh the list before retrying.");
+        setClientReload(value => value + 1);
+        return;
+      }
+      if (!response.ok) throw new Error("Client update failed");
+      setEditingClient(null);
+      setEditMessage("");
+      setClientReload(value => value + 1);
+    } catch {
+      setEditMessage(lang === "el" ? "Η ενημέρωση απέτυχε. Ελέγξτε τα στοιχεία και τη σύνδεση." : "Update failed. Check details and connection.");
+    } finally { setEditSaving(false); }
+  }
   const [adminClients, setAdminClients] = useState<AdminClient[]>([]);
   const [adminClientTotal, setAdminClientTotal] = useState(0);
   const [adminClientOffset, setAdminClientOffset] = useState(0);
@@ -844,17 +881,26 @@ export function Website({
                         <button type="submit" disabled={clientSaving}>{clientSaving ? (lang === "el" ? "Αποθήκευση…" : "Saving…") : (lang === "el" ? "Δημιουργία πελάτη" : "Create client")}</button>
                         {clientMessage && <p role="status">{clientMessage}</p>}
                       </form>
+                      {editingClient && <form className="crm-create-form" onSubmit={saveClientEdit}>
+                        <h3>{lang === "el" ? "Επεξεργασία πελάτη" : "Edit client"}</h3>
+                        <label>{t.name}<input required maxLength={160} value={editName} onChange={e => setEditName(e.target.value)} /></label>
+                        <label>Email<input type="email" maxLength={254} value={editEmail} onChange={e => setEditEmail(e.target.value)} /></label>
+                        <label>{lang === "el" ? "Τηλέφωνο" : "Phone"}<input type="tel" maxLength={40} value={editPhone} onChange={e => setEditPhone(e.target.value)} /></label>
+                        <button type="submit" disabled={editSaving}>{editSaving ? (lang === "el" ? "Αποθήκευση…" : "Saving…") : (lang === "el" ? "Αποθήκευση αλλαγών" : "Save changes")}</button>
+                        <button type="button" disabled={editSaving} onClick={() => { setEditingClient(null); setEditMessage(""); }}>{lang === "el" ? "Ακύρωση" : "Cancel"}</button>
+                        {editMessage && <p role="alert">{editMessage}</p>}
+                      </form>}
                       <div className="quote-workspace-summary"><span>{lang === "el" ? "Σύνολο πελατών" : "Total clients"}</span><strong>{adminClientsState === "ready" ? adminClientTotal : "—"}</strong></div>
                       <label className="quote-workspace-filter" htmlFor="admin-client-search">{lang === "el" ? "Αναζήτηση πελατών" : "Search clients"}
                         <input id="admin-client-search" className="search" type="search" value={search} placeholder={lang === "el" ? "Όνομα, email ή τηλέφωνο" : "Name, email or phone"} onChange={e => { setSearch(e.target.value); setAdminClientOffset(0); }} />
                       </label>
                       <div className="table-wrap"><table>
-                        <thead><tr><th>{t.name}</th><th>Email</th><th>{lang === "el" ? "Τηλέφωνο" : "Phone"}</th><th>{lang === "el" ? "Κατάσταση" : "Status"}</th></tr></thead>
+                        <thead><tr><th>{t.name}</th><th>Email</th><th>{lang === "el" ? "Τηλέφωνο" : "Phone"}</th><th>{lang === "el" ? "Κατάσταση" : "Status"}</th><th>{lang === "el" ? "Ενέργειες" : "Actions"}</th></tr></thead>
                         <tbody>
-                          {adminClientsState === "loading" ? <tr><td colSpan={4}>{lang === "el" ? "Φόρτωση πελατών…" : "Loading clients…"}</td></tr>
-                          : adminClientsState === "error" ? <tr><td colSpan={4} role="alert">{lang === "el" ? "Η ασφαλής φόρτωση απέτυχε. Ελέγξτε ότι έχει εφαρμοστεί η migration 0006." : "Secure loading failed. Check that migration 0006 is applied."}</td></tr>
-                          : adminClients.length === 0 ? <tr><td colSpan={4}>{lang === "el" ? "Δεν υπάρχουν πελάτες." : "No clients found."}</td></tr>
-                          : adminClients.map(client => <tr key={client.id}><td><strong>{client.display_name}</strong></td><td>{client.email ?? "—"}</td><td>{client.phone ?? "—"}</td><td><span className="pill">{client.status}</span></td></tr>)}
+                          {adminClientsState === "loading" ? <tr><td colSpan={5}>{lang === "el" ? "Φόρτωση πελατών…" : "Loading clients…"}</td></tr>
+                          : adminClientsState === "error" ? <tr><td colSpan={5} role="alert">{lang === "el" ? "Η ασφαλής φόρτωση απέτυχε. Ελέγξτε ότι έχει εφαρμοστεί η migration 0006." : "Secure loading failed. Check that migration 0006 is applied."}</td></tr>
+                          : adminClients.length === 0 ? <tr><td colSpan={5}>{lang === "el" ? "Δεν υπάρχουν πελάτες." : "No clients found."}</td></tr>
+                          : adminClients.map(client => <tr key={client.id}><td><strong>{client.display_name}</strong></td><td>{client.email ?? "—"}</td><td>{client.phone ?? "—"}</td><td><span className="pill">{client.status}</span></td><td><button type="button" onClick={() => beginClientEdit(client)}>{lang === "el" ? "Επεξεργασία" : "Edit"}</button></td></tr>)}
                         </tbody>
                       </table></div>
                       {adminClientsState === "ready" && adminClientTotal > 0 && <div className="quote-workspace-pagination">

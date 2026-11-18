@@ -11,7 +11,7 @@ type Env = {
   ACCESS_ADMIN_AUD?: string;
   ACCESS_ADMIN_EMAIL?: string;
 };
-type ClientRow = { id: string; display_name: string; email: string | null; phone: string | null; status: string; created_at: string };
+type ClientRow = { id: string; display_name: string; email: string | null; phone: string | null; status: string; created_at: string; updated_at: string };
 
 export async function GET(request: Request): Promise<Response> {
   const headers = { "Cache-Control": "no-store", "Content-Type": "application/json" };
@@ -38,7 +38,7 @@ export async function GET(request: Request): Promise<Response> {
     const pattern = "%" + query.replace(/[\\%_]/g, "\\$&") + "%";
     const where = "deleted_at IS NULL AND (display_name LIKE ? ESCAPE '\\' OR email LIKE ? ESCAPE '\\' OR phone LIKE ? ESCAPE '\\')";
     const count = await config.DB.prepare("SELECT COUNT(*) AS total FROM crm_clients WHERE " + where).bind(pattern, pattern, pattern).all<{ total: number }>();
-    const rows = await config.DB.prepare("SELECT id, display_name, email, phone, status, created_at FROM crm_clients WHERE " + where + " ORDER BY created_at DESC, id DESC LIMIT 25 OFFSET ?").bind(pattern, pattern, pattern, offset).all<ClientRow>();
+    const rows = await config.DB.prepare("SELECT id, display_name, email, phone, status, created_at, updated_at FROM crm_clients WHERE " + where + " ORDER BY created_at DESC, id DESC LIMIT 25 OFFSET ?").bind(pattern, pattern, pattern, offset).all<ClientRow>();
     return new Response(JSON.stringify({ clients: rows.results, total: Number(count.results[0]?.total ?? 0), limit: 25, offset }), { status: 200, headers });
   } catch {
     return new Response(JSON.stringify({ error: "Service unavailable" }), { status: 503, headers });
