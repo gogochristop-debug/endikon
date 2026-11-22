@@ -34,10 +34,12 @@ const icons = [ChartNoAxesCombined, Globe2, House, Layers3, Users, Files];
 const aboutIcons = [Compass, HeartHandshake, LaptopMinimal];
 const processIcons = [MessageSquare, FileText, Headset];
 export function Website({
+  brandName,
   lang,
   route,
   initialService,
 }: {
+  brandName: string;
   lang: Lang;
   route: string;
   initialService?: string;
