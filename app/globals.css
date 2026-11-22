@@ -1725,3 +1725,5 @@ body { background: var(--paper); color: var(--ink); }
 .crm-create-form button { justify-self: start; min-height: 44px; padding: 10px 20px; border-radius: 7px; background: #103e36; color: #fff; cursor: pointer; }
 .crm-create-form button:disabled { opacity: .6; cursor: wait; }
 .crm-create-form input:focus-visible, .crm-create-form button:focus-visible { outline: 3px solid #c7ae83; outline-offset: 2px; }
+
+.brand-name-custom { display: inline-block; max-width: 100%; overflow-wrap: anywhere; font-family: var(--serif); font-size: clamp(1.1rem, 2vw, 1.55rem); font-weight: 600; line-height: 1.2; }
