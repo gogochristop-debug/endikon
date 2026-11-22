@@ -154,3 +154,6 @@ vite.config.ts.timestamp-*
 .dev.vars
 .dev.vars.*
 cloudflare-env.d.ts
+
+# Per-customer standalone deployment configurations
+.standalone/
