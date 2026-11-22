@@ -34,10 +34,12 @@ const icons = [ChartNoAxesCombined, Globe2, House, Layers3, Users, Files];
 const aboutIcons = [Compass, HeartHandshake, LaptopMinimal];
 const processIcons = [MessageSquare, FileText, Headset];
 export function Website({
+  brandName,
   lang,
   route,
   initialService,
 }: {
+  brandName: string;
   lang: Lang;
   route: string;
   initialService?: string;
@@ -545,7 +547,7 @@ export function Website({
       <header className={scrolled ? "header scrolled" : "header"}>
         <div className="header-inner">
           <Link href={href()} className="brand header-brand">
-            <Image
+            {brandName === "ENDIKON" ? <Image
               src="/brand/endikon-logo-transparent.png"
               alt={lang === "el" ? "ENDIKON — Αρχική σελίδα" : "ENDIKON — Home"}
               width={2086}
@@ -553,7 +555,7 @@ export function Website({
               sizes="(max-width: 480px) 164px, (max-width: 1200px) 210px, 240px"
               preload
               className="header-logo"
-            />
+            /> : <span className="brand-name-custom">{brandName}</span>}
           </Link>
           <nav
             className={menu ? "nav open" : "nav"}

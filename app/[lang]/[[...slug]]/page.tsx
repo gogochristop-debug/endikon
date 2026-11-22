@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { copy, languages, services, type Lang } from "@/lib/content";
 import { Website } from "@/components/website";
+import { getFirmBrand } from "@/lib/server/firm-brand";
 const routes = [
   "",
   "services",
@@ -36,6 +37,7 @@ export async function generateMetadata({
   if (!t) return {};
   const route = slug.join("/");
   const service = services.find((s) => route === `services/${s.slug}`);
+  const brand = getFirmBrand();
   const title =
     service?.[lang].title ??
     {
@@ -49,9 +51,9 @@ export async function generateMetadata({
     }[route] ??
     t.dashboard;
   return {
-    title: `${title} | ENDIKON`,
+    title: `${title} | ${brand.name}`,
     description: service?.[lang].desc ?? t.intro,
-    metadataBase: new URL("https://endikon.com"),
+    metadataBase: new URL(brand.publicUrl),
     alternates: {
       canonical: `/${lang}/${route}`,
       languages: { el: `/el/${route}`, en: `/en/${route}` },
@@ -75,6 +77,7 @@ export default async function Page({
   const { service } = await searchParams;
   return (
     <Website
+      brandName={getFirmBrand().name}
       lang={lang}
       route={route}
       initialService={
